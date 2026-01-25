@@ -294,11 +294,14 @@ export default function CalendarPage() {
               style={{
                 padding: '0.75rem',
                 textAlign: 'center',
-                fontWeight: '600',
+                fontWeight: '900',
                 fontSize: isMobile ? '0.75rem' : '0.875rem',
-                color: '#666',
-                background: '#f9fafb',
-                borderRadius: '6px',
+                color: '#000000',
+                background: '#FFFFFF',
+                border: '3px solid #000000',
+                borderRadius: '0',
+                boxShadow: '4px 4px 0px 0px #000000',
+                textTransform: 'uppercase',
               }}
             >
               {day}
@@ -318,25 +321,27 @@ export default function CalendarPage() {
                 style={{
                   minHeight: isMobile ? '60px' : '100px',
                   padding: '0.5rem',
-                  border: `2px solid ${isToday ? '#3b82f6' : '#e5e7eb'}`,
-                  borderRadius: '6px',
-                  background: isCurrentMonth ? 'white' : '#f9fafb',
+                  border: `3px solid ${isToday ? '#4ECDC4' : '#000000'}`,
+                  borderRadius: '0',
+                  background: isCurrentMonth ? '#FFFFFF' : '#FFFFFF',
+                  boxShadow: isToday ? '4px 4px 0px 0px #4ECDC4' : '4px 4px 0px 0px #000000',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  opacity: isCurrentMonth ? 1 : 0.5,
+                  opacity: isCurrentMonth ? 1 : 0.6,
                   position: 'relative',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = isCurrentMonth ? '#f3f4f6' : '#f9fafb';
+                  e.currentTarget.style.transform = 'translate(2px, 2px)';
+                  e.currentTarget.style.boxShadow = isToday ? '2px 2px 0px 0px #4ECDC4' : '2px 2px 0px 0px #000000';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = isCurrentMonth ? 'white' : '#f9fafb';
+                  e.currentTarget.style.transform = 'translate(0, 0)';
+                  e.currentTarget.style.boxShadow = isToday ? '4px 4px 0px 0px #4ECDC4' : '4px 4px 0px 0px #000000';
                 }}
               >
                 <div style={{
                   fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  fontWeight: isToday ? '600' : '400',
-                  color: isToday ? '#3b82f6' : '#374151',
+                  fontWeight: isToday ? '900' : '700',
+                  color: isToday ? '#4ECDC4' : '#000000',
                   marginBottom: '0.25rem',
                 }}>
                   {format(day, 'd')}
@@ -362,13 +367,14 @@ export default function CalendarPage() {
                         style={{
                           fontSize: isMobile ? '0.65rem' : '0.75rem',
                           padding: '0.25rem 0.5rem',
-                          background: '#667eea',
-                          color: 'white',
-                          borderRadius: '4px',
+                          background: '#4ECDC4',
+                          color: '#000000',
+                          border: '2px solid #000000',
+                          borderRadius: '0',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
-                          fontWeight: '500',
+                          fontWeight: '700',
                           cursor: 'pointer',
                           position: 'relative',
                         }}
@@ -379,10 +385,10 @@ export default function CalendarPage() {
                     {dayReminders.length > (isMobile ? 1 : 2) && (
                       <div style={{
                         fontSize: isMobile ? '0.6rem' : '0.7rem',
-                        color: '#666',
-                        fontWeight: '500',
+                        color: '#000000',
+                        fontWeight: '700',
                       }}>
-                        +{dayReminders.length - (isMobile ? 1 : 2)} more
+                        +{dayReminders.length - (isMobile ? 1 : 2)} MORE
                       </div>
                     )}
                   </div>
@@ -399,11 +405,11 @@ export default function CalendarPage() {
               position: 'fixed',
               left: `${hoveredReminder.x + 10}px`,
               top: `${hoveredReminder.y + 10}px`,
-              background: 'white',
+              background: '#FFFFFF',
               padding: '1rem',
-              borderRadius: '8px',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
-              border: '1px solid #e5e7eb',
+              borderRadius: '0',
+              boxShadow: '8px 8px 0px 0px #000000',
+              border: '3px solid #000000',
               zIndex: 1000,
               maxWidth: '300px',
               pointerEvents: 'none',
@@ -411,37 +417,40 @@ export default function CalendarPage() {
           >
             <div style={{
               fontSize: '0.875rem',
-              fontWeight: '600',
+              fontWeight: '900',
               marginBottom: '0.5rem',
-              color: '#374151',
+              color: '#000000',
+              textTransform: 'uppercase',
             }}>
               {hoveredReminder.reminder.text}
             </div>
             {hoveredReminder.reminder.description && (
               <div style={{
                 fontSize: '0.75rem',
-                color: '#666',
+                color: '#000000',
                 marginBottom: '0.5rem',
                 lineHeight: '1.4',
+                fontWeight: '600',
               }}>
                 {hoveredReminder.reminder.description}
               </div>
             )}
             <div style={{
               fontSize: '0.75rem',
-              color: '#666',
+              color: '#000000',
               display: 'flex',
               flexDirection: 'column',
               gap: '0.25rem',
+              fontWeight: '600',
             }}>
               <div>
-                📅 Due: <strong>{format(new Date(hoveredReminder.reminder.due_date), 'MMM dd, yyyy')}</strong>
+                📅 DUE: <strong>{format(new Date(hoveredReminder.reminder.due_date), 'MMM dd, yyyy')}</strong>
               </div>
               <div>
-                🔄 Period: <strong>{hoveredReminder.reminder.period_days} day{hoveredReminder.reminder.period_days !== 1 ? 's' : ''}</strong>
+                🔄 PERIOD: <strong>{hoveredReminder.reminder.period_days} DAY{hoveredReminder.reminder.period_days !== 1 ? 'S' : ''}</strong>
               </div>
               <div>
-                🔗 Webhook: <strong>{getWebhookName(hoveredReminder.reminder.slack_webhook)}</strong>
+                🔗 WEBHOOK: <strong>{getWebhookName(hoveredReminder.reminder.slack_webhook)}</strong>
               </div>
             </div>
           </div>
@@ -452,19 +461,22 @@ export default function CalendarPage() {
           <div style={{
             marginTop: '2rem',
             padding: '1.5rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
+            background: '#FFFFFF',
+            borderRadius: '0',
+            border: '4px solid #000000',
+            boxShadow: '8px 8px 0px 0px #000000',
           }}>
             <h3 style={{
               fontSize: '1.25rem',
-              fontWeight: '600',
+              fontWeight: '900',
               marginBottom: '1rem',
+              color: '#000000',
+              textTransform: 'uppercase',
             }}>
-              Reminders for {format(selectedDate, 'MMMM dd, yyyy')}
+              REMINDERS FOR {format(selectedDate, 'MMMM dd, yyyy').toUpperCase()}
             </h3>
             {getRemindersForDate(selectedDate).length === 0 ? (
-              <p style={{ color: '#666' }}>No reminders for this date{selectedWebhookFilter !== 'all' ? ` with selected webhook filter` : ''}</p>
+              <p style={{ color: '#000000', fontWeight: '700' }}>NO REMINDERS FOR THIS DATE{selectedWebhookFilter !== 'all' ? ` WITH SELECTED WEBHOOK FILTER` : ''}</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {getRemindersForDate(selectedDate).map(reminder => (
@@ -472,39 +484,44 @@ export default function CalendarPage() {
                     key={reminder.id}
                     style={{
                       padding: '1rem',
-                      background: 'white',
-                      borderRadius: '6px',
-                      border: '1px solid #e5e7eb',
+                      background: '#FFFFFF',
+                      borderRadius: '0',
+                      border: '3px solid #000000',
+                      boxShadow: '4px 4px 0px 0px #000000',
                     }}
                   >
                     <div style={{
                       fontSize: '1rem',
-                      fontWeight: '600',
+                      fontWeight: '900',
                       marginBottom: '0.5rem',
+                      color: '#000000',
+                      textTransform: 'uppercase',
                     }}>
                       {reminder.text}
                     </div>
                     {reminder.description && (
                       <div style={{
                         fontSize: '0.875rem',
-                        color: '#666',
+                        color: '#000000',
                         marginBottom: '0.5rem',
+                        fontWeight: '600',
                       }}>
                         {reminder.description}
                       </div>
                     )}
                     <div style={{
                       fontSize: '0.875rem',
-                      color: '#666',
+                      color: '#000000',
                       display: 'flex',
                       flexWrap: 'wrap',
                       gap: '1rem',
+                      fontWeight: '600',
                     }}>
                       <span>
-                        🔄 Period: <strong>{reminder.period_days} day{reminder.period_days !== 1 ? 's' : ''}</strong>
+                        🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
                       </span>
                       <span>
-                        🔗 Webhook: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
+                        🔗 WEBHOOK: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
                       </span>
                     </div>
                   </div>
@@ -514,18 +531,21 @@ export default function CalendarPage() {
             <button
               onClick={() => setSelectedDate(null)}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.neutral,
                 marginTop: '1rem',
                 padding: '0.5rem 1rem',
-                background: '#e5e7eb',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
                 fontSize: '0.875rem',
-                fontWeight: '500',
+              }}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
               }}
             >
-              Close
+              CLOSE
             </button>
           </div>
         )}
@@ -538,28 +558,34 @@ export default function CalendarPage() {
             type="button"
             onClick={() => setShowShareLinks(!showShareLinks)}
             style={{
+              ...neoStyles.button,
+              ...buttonVariants.neutral,
               width: '100%',
               padding: '0.75rem',
-              background: showShareLinks ? '#e5e7eb' : '#f3f4f6',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
               fontSize: '0.875rem',
-              cursor: 'pointer',
-              fontWeight: '500',
               marginBottom: showShareLinks ? '1rem' : '0',
+              background: showShareLinks ? '#E5E5E5' : '#F3F4F6',
+            }}
+            onMouseEnter={(e) => {
+              Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translate(0, 0)';
+              e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
             }}
           >
-            {showShareLinks ? '▼ Hide' : '▶ Show'} Share Calendar Links
+            {showShareLinks ? '▼ HIDE' : '▶ SHOW'} SHARE CALENDAR LINKS
           </button>
           
           {showShareLinks && (
             <div style={{
               padding: '1.5rem',
-              background: '#f9fafb',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb',
+              background: '#FFFFFF',
+              borderRadius: '0',
+              border: '4px solid #000000',
+              boxShadow: '8px 8px 0px 0px #000000',
             }}>
-              <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1rem', fontWeight: '700' }}>
                 Copy these links to share a public calendar view. Anyone with the link can view reminders.
               </p>
               
@@ -567,24 +593,27 @@ export default function CalendarPage() {
                 {/* All Webhooks Link */}
                 <div style={{
                   padding: '1rem',
-                  background: 'white',
-                  borderRadius: '6px',
-                  border: '1px solid #e5e7eb',
+                  background: '#FFFFFF',
+                  borderRadius: '0',
+                  border: '3px solid #000000',
+                  boxShadow: '4px 4px 0px 0px #000000',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
-                        All Webhooks
+                      <div style={{ fontWeight: '900', marginBottom: '0.25rem', color: '#000000', textTransform: 'uppercase' }}>
+                        ALL WEBHOOKS
                       </div>
                       <div style={{
                         fontSize: '0.75rem',
-                        color: '#666',
+                        color: '#000000',
                         wordBreak: 'break-all',
                         fontFamily: 'monospace',
-                        background: '#f3f4f6',
+                        background: '#FFFFFF',
+                        border: '2px solid #000000',
                         padding: '0.5rem',
-                        borderRadius: '4px',
+                        borderRadius: '0',
                         marginTop: '0.5rem',
+                        fontWeight: '600',
                       }}>
                         {typeof window !== 'undefined' ? `${window.location.origin}/calendar/public` : '/calendar/public'}
                       </div>
@@ -596,18 +625,21 @@ export default function CalendarPage() {
                         alert('Link copied to clipboard!');
                       }}
                       style={{
+                        ...neoStyles.button,
+                        ...buttonVariants.primary,
                         padding: '0.5rem 1rem',
-                        background: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
                         fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        fontWeight: '500',
                         whiteSpace: 'nowrap',
                       }}
+                      onMouseEnter={(e) => {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translate(0, 0)';
+                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                      }}
                     >
-                      Copy Link
+                      COPY LINK
                     </button>
                   </div>
                 </div>
@@ -623,25 +655,28 @@ export default function CalendarPage() {
                       key={webhook.id}
                       style={{
                         padding: '1rem',
-                        background: 'white',
-                        borderRadius: '6px',
-                        border: '1px solid #e5e7eb',
+                        background: '#FFFFFF',
+                        borderRadius: '0',
+                        border: '3px solid #000000',
+                        boxShadow: '4px 4px 0px 0px #000000',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                          <div style={{ fontWeight: '900', marginBottom: '0.25rem', color: '#000000', textTransform: 'uppercase' }}>
                             {webhook.name}
                           </div>
                           <div style={{
                             fontSize: '0.75rem',
-                            color: '#666',
+                            color: '#000000',
                             wordBreak: 'break-all',
                             fontFamily: 'monospace',
-                            background: '#f3f4f6',
+                            background: '#FFFFFF',
+                            border: '2px solid #000000',
                             padding: '0.5rem',
-                            borderRadius: '4px',
+                            borderRadius: '0',
                             marginTop: '0.5rem',
+                            fontWeight: '600',
                           }}>
                             {shareUrl}
                           </div>
@@ -652,18 +687,21 @@ export default function CalendarPage() {
                             alert('Link copied to clipboard!');
                           }}
                           style={{
+                            ...neoStyles.button,
+                            ...buttonVariants.primary,
                             padding: '0.5rem 1rem',
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
                             fontSize: '0.875rem',
-                            cursor: 'pointer',
-                            fontWeight: '500',
                             whiteSpace: 'nowrap',
                           }}
+                          onMouseEnter={(e) => {
+                            Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translate(0, 0)';
+                            e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                          }}
                         >
-                          Copy Link
+                          COPY LINK
                         </button>
                       </div>
                     </div>
