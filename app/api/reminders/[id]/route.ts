@@ -166,3 +166,41 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    if (!dbInitialized) {
+      await initDatabase();
+      dbInitialized = true;
+    }
+
+    const id = parseInt(params.id);
+    const reminder = await getReminderById(id);
+
+    if (!reminder) {
+      return NextResponse.json(
+        { error: 'Reminder not found' },
+        { status: 404 }
+      );
+    }
+
+    const { supabase } = await import('@/lib/supabase');
+    const { error } = await supabase
+      .from('reminders')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting reminder:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete reminder' },
+      { status: 500 }
+    );
+  }
+}

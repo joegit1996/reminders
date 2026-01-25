@@ -8,6 +8,7 @@ import ReminderList from '@/components/ReminderList';
 import UpdateDueDateModal from '@/components/UpdateDueDateModal';
 import EditDelayMessageModal from '@/components/EditDelayMessageModal';
 import EditAutomatedMessagesModal from '@/components/EditAutomatedMessagesModal';
+import AgentChat from '@/components/AgentChat';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export interface Reminder {
@@ -209,6 +210,17 @@ export default function Home() {
           </div>
         </div>
         <ReminderForm onReminderCreated={handleReminderCreated} />
+      </div>
+
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: '0',
+        padding: isMobile ? '1.5rem' : '2rem',
+        border: '4px solid #000000',
+        boxShadow: '8px 8px 0px 0px #000000',
+        marginBottom: isMobile ? '1.5rem' : '2rem',
+      }}>
+        <AgentChat onReminderUpdated={fetchReminders} />
       </div>
 
       <div style={{

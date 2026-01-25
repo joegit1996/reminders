@@ -11,6 +11,7 @@ A web application for managing reminders that automatically sends notifications 
 - ✅ Update due dates with full history logging
 - ✅ Mark reminders as complete to stop notifications
 - ✅ Continue reminders even after due date passes (shows negative days)
+- ✅ **AI Agent** - Manage reminders using natural language (Gemini-powered)
 
 ## Tech Stack
 
@@ -49,6 +50,8 @@ npm install
    - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL (from step 2)
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anon key (from step 2)
    - `CRON_SECRET` - Generate a random secret: `openssl rand -hex 16`
+   - `GEMINI_API_KEY` - (Optional) Google Gemini API key for AI Agent feature ([Get one here](https://makersuite.google.com/app/apikey))
+   - `NEXT_PUBLIC_BASE_URL` - (Optional) Your app URL for production (e.g., `https://your-app.vercel.app`)
 
 **For Local Development:**
 Create a `.env.local` file in the root directory:
@@ -57,6 +60,8 @@ Create a `.env.local` file in the root directory:
 NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key-here"
 CRON_SECRET="your-random-secret-here"
+GEMINI_API_KEY="your-gemini-api-key-here"  # Optional: for AI Agent feature
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"  # Optional: for production use your Vercel URL
 ```
 
 ### 4. Deploy to Vercel
@@ -113,6 +118,11 @@ Cron schedule format: `minute hour day month weekday`
    - Update due dates (history is logged)
    - Mark reminders as complete to stop notifications
 
+4. **AI Agent** (Optional):
+   - Use natural language to create, update, search, and manage reminders
+   - Examples: "Create a reminder to review the proposal due on February 15th"
+   - See [AGENT_SETUP.md](./AGENT_SETUP.md) for detailed setup and usage
+
 ## API Endpoints
 
 - `GET /api/reminders` - Get all reminders
@@ -120,7 +130,9 @@ Cron schedule format: `minute hour day month weekday`
 - `GET /api/reminders/[id]` - Get a specific reminder
 - `PATCH /api/reminders/[id]` - Update reminder (complete or update due date)
 - `GET /api/reminders/[id]/logs` - Get update history for a reminder
+- `DELETE /api/reminders/[id]` - Delete a reminder
 - `GET /api/cron/send-reminders` - Cron job endpoint (called automatically)
+- `POST /api/agent` - AI Agent endpoint for natural language commands
 
 ## Database Schema
 
