@@ -21,10 +21,16 @@ interface Webhook {
   webhook_url: string;
 }
 
+interface Reminder {
+  id: number;
+  text: string;
+}
+
 export default function ActionFormFields({ action, onArgsChange }: ActionFormFieldsProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [localArgs, setLocalArgs] = useState(action.args || {});
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
 
   useEffect(() => {
     onArgsChange(localArgs);
@@ -40,6 +46,16 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
         }
       })
       .catch(err => console.error('Failed to fetch webhooks:', err));
+    
+    // Fetch reminders to show names instead of IDs
+    fetch('/api/reminders')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setReminders(data);
+        }
+      })
+      .catch(err => console.error('Failed to fetch reminders:', err));
   }, []);
 
   const getWebhookName = (url: string): string => {
@@ -218,6 +234,10 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
     
     // Check if this is a webhook field
     const isWebhookField = key.toLowerCase().includes('webhook') || key.toLowerCase().includes('slack');
+    
+    // Check if this is a reminder ID field
+    const isReminderIdField = (key.toLowerCase() === 'id' && action.name.toLowerCase().includes('reminder')) || 
+                              (key.toLowerCase().includes('reminder') && key.toLowerCase().includes('id'));
 
     return (
       <div key={key} style={{ marginBottom: '1rem' }}>
@@ -252,6 +272,40 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
             {fieldSchema.enum.map((option: string) => (
               <option key={option} value={option}>{option}</option>
             ))}
+          </select>
+        ) : isReminderIdField ? (
+          <select
+            value={value || ''}
+            onChange={(e) => {
+              const newArgs = { ...localArgs };
+              const newValue = parseInt(e.target.value) || 0;
+              if (path) {
+                const pathParts = path.split('.');
+                let current: any = newArgs;
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                  current = current[pathParts[i]] = current[pathParts[i]] || {};
+                }
+                current[pathParts[pathParts.length - 1]] = newValue;
+              } else {
+                newArgs[key] = newValue;
+              }
+              setLocalArgs(newArgs);
+            }}
+            style={{
+              ...neoStyles.input,
+              width: '100%',
+              fontSize: isMobile ? '0.875rem' : '1rem',
+            }}
+          >
+            <option value="">Select reminder...</option>
+            {reminders.map((reminder) => (
+              <option key={reminder.id} value={reminder.id}>
+                {reminder.text} (ID: {reminder.id})
+              </option>
+            ))}
+            {value && !reminders.find(r => r.id === parseInt(value)) && (
+              <option value={value}>Reminder ID: {value}</option>
+            )}
           </select>
         ) : isWebhookField ? (
           <select

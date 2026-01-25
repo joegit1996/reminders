@@ -22,6 +22,7 @@ interface Message {
   requiresApproval?: boolean;
   approved?: boolean;
   responseMessage?: any; // Store the original response message for execution
+  approvedActions?: Array<{ name: string; args: any }>; // Track approved actions
 }
 
 interface AgentChatProps {
@@ -178,7 +179,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
     scrollToBottom();
   }, [messages]);
 
-  // Handle approving the current action in the modal
+  // Handle approving the current action in the modal (sequential approval)
   const handleApproveCurrentAction = async () => {
     if (currentActionIndex >= allPendingActions.length || currentMessageIndex === -1) return;
     
@@ -202,77 +203,113 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         return true;
       });
 
-      // Update response message with edited values
-      let responseMessageToSend = currentResponseMessage;
-      if (updatedArgs.length > 0) {
-        responseMessageToSend = {
-          ...currentResponseMessage,
-          tool_calls: currentResponseMessage.tool_calls.map((tc: any, idx: number) => {
-            if (idx < updatedArgs.length && updatedArgs[idx]) {
-              return {
-                ...tc,
-                function: {
-                  ...tc.function,
-                  arguments: JSON.stringify(updatedArgs[idx]),
-                },
-              };
-            }
-            return tc;
-          }),
-        };
+      // Create a response message with ONLY the current action's tool call
+      const currentAction = allPendingActions[currentActionIndex];
+      const currentToolCall = currentResponseMessage.tool_calls.find((tc: any) => tc.id === currentAction.id);
+      
+      if (!currentToolCall) {
+        throw new Error('Tool call not found for current action');
       }
 
-      // Send approval for ALL actions at once (the API handles execution)
+      // Update the tool call with edited args
+      const updatedToolCall = {
+        ...currentToolCall,
+        function: {
+          ...currentToolCall.function,
+          arguments: JSON.stringify(updatedArgs[currentActionIndex] || currentAction.args),
+        },
+      };
+
+      // Create response message with only this tool call
+      const responseMessageToSend = {
+        ...currentResponseMessage,
+        tool_calls: [updatedToolCall],
+      };
+
+      // Send approval for ONLY the current action
       const response = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `I approve all ${allPendingActions.length} action(s)`,
+          message: `I approve action ${currentActionIndex + 1}: ${currentAction.name}`,
           conversationHistory: conversationHistory,
           approveActions: true,
-          pendingActionId: allPendingActions[0]?.id,
+          pendingActionId: currentAction.id,
           responseMessage: responseMessageToSend,
         }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to approve actions');
+        throw new Error(error.error || 'Failed to approve action');
       }
 
       const data = await response.json();
       
-      // Update the message to remove pending actions and show result
-      setMessages(prev => {
-        const updated = [...prev];
-        updated[currentMessageIndex] = {
-          ...updated[currentMessageIndex],
-          pendingActions: undefined,
-          requiresApproval: false,
-          responseMessage: undefined,
-          content: data.response || updated[currentMessageIndex].content + '\n\n✅ Actions approved and executed.',
-          functionCalls: data.functionCalls,
-          approved: true,
-        };
-        return updated;
-      });
+      // Track approved actions
+      const approvedActions = [...(messageWithActions.approvedActions || []), {
+        name: currentAction.name,
+        args: updatedArgs[currentActionIndex] || currentAction.args,
+      }];
 
-      // Close modal
-      setShowApprovalModal(false);
-      setCurrentActionIndex(0);
-      setCurrentMessageIndex(-1);
-      setAllPendingActions([]);
-      setCurrentResponseMessage(null);
-      setEditedArgs([]);
+      // Move to next action or close modal if all approved
+      const nextActionIndex = currentActionIndex + 1;
+      
+      if (nextActionIndex >= allPendingActions.length) {
+        // All actions approved - update message and close modal
+        const approvedActionNames = approvedActions.map(a => a.name).join(', ');
+        setMessages(prev => {
+          const updated = [...prev];
+          const originalContent = updated[currentMessageIndex].content;
+          updated[currentMessageIndex] = {
+            ...updated[currentMessageIndex],
+            pendingActions: undefined,
+            requiresApproval: false,
+            responseMessage: undefined,
+            content: data.response || `${originalContent}\n\n✅ All actions approved and executed: ${approvedActionNames}`,
+            functionCalls: [...(updated[currentMessageIndex].functionCalls || []), ...(data.functionCalls || [])],
+            approved: true,
+            approvedActions: approvedActions,
+          };
+          return updated;
+        });
 
-      // Refresh reminders if a function was called
-      if (data.functionCalls && data.functionCalls.length > 0) {
-        onReminderUpdated?.();
+        // Close modal
+        setShowApprovalModal(false);
+        setCurrentActionIndex(0);
+        setCurrentMessageIndex(-1);
+        setAllPendingActions([]);
+        setCurrentResponseMessage(null);
+        setEditedArgs([]);
+
+        // Refresh reminders if a function was called
+        if (data.functionCalls && data.functionCalls.length > 0) {
+          onReminderUpdated?.();
+        }
+      } else {
+        // Move to next action
+        setCurrentActionIndex(nextActionIndex);
+        
+        // Update message to show progress
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[currentMessageIndex] = {
+            ...updated[currentMessageIndex],
+            functionCalls: [...(updated[currentMessageIndex].functionCalls || []), ...(data.functionCalls || [])],
+            approvedActions: approvedActions,
+          };
+          return updated;
+        });
+
+        // Refresh reminders if a function was called
+        if (data.functionCalls && data.functionCalls.length > 0) {
+          onReminderUpdated?.();
+        }
       }
     } catch (error) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `Error: ${error instanceof Error ? error.message : 'Failed to approve actions'}`,
+        content: `Error: ${error instanceof Error ? error.message : 'Failed to approve action'}`,
       }]);
       setShowApprovalModal(false);
     } finally {
@@ -659,7 +696,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
                       e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
                     }}
                   >
-                    ✓ APPROVE ALL ({allPendingActions.length})
+                    ✓ APPROVE {currentActionIndex < allPendingActions.length - 1 ? '& NEXT' : ''}
                   </button>
                   <button
                     onClick={handleRejectCurrentAction}
