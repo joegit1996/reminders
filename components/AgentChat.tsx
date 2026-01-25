@@ -256,21 +256,30 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
       const nextActionIndex = currentActionIndex + 1;
       
       if (nextActionIndex >= allPendingActions.length) {
-        // All actions approved - update message and close modal
+        // All actions approved - add a new assistant message with the final response
         const approvedActionNames = approvedActions.map(a => a.name).join(', ');
+        const finalResponse = data.response || `✅ All actions approved and executed: ${approvedActionNames}`;
+        
+        // Update the original message to remove pending status
         setMessages(prev => {
           const updated = [...prev];
-          const originalContent = updated[currentMessageIndex].content;
           updated[currentMessageIndex] = {
             ...updated[currentMessageIndex],
             pendingActions: undefined,
             requiresApproval: false,
             responseMessage: undefined,
-            content: data.response || `${originalContent}\n\n✅ All actions approved and executed: ${approvedActionNames}`,
             functionCalls: [...(updated[currentMessageIndex].functionCalls || []), ...(data.functionCalls || [])],
-            approved: true,
             approvedActions: approvedActions,
           };
+          
+          // Add a new assistant message with the final response
+          updated.splice(currentMessageIndex + 1, 0, {
+            role: 'assistant',
+            content: finalResponse,
+            functionCalls: data.functionCalls,
+            approved: true,
+          });
+          
           return updated;
         });
 
@@ -321,6 +330,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
   const handleRejectCurrentAction = () => {
     if (currentMessageIndex === -1) return;
     
+    // Update the original message to remove pending status
     setMessages(prev => {
       const updated = [...prev];
       updated[currentMessageIndex] = {
@@ -328,8 +338,14 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         pendingActions: undefined,
         requiresApproval: false,
         responseMessage: undefined,
-        content: updated[currentMessageIndex].content + '\n\n❌ Actions rejected by user.',
       };
+      
+      // Add a new assistant message indicating rejection
+      updated.splice(currentMessageIndex + 1, 0, {
+        role: 'assistant',
+        content: '❌ Actions rejected by user.',
+      });
+      
       return updated;
     });
     
@@ -380,6 +396,8 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
       
       // If this requires approval, show modal
       if (data.requiresApproval && data.pendingActions) {
+        console.log('[FRONTEND] Received pending actions:', data.pendingActions.length, data.pendingActions);
+        
         const newMessage: Message = {
           role: 'assistant',
           content: data.response,
@@ -389,7 +407,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         };
         setMessages(prev => [...prev, newMessage]);
         
-        // Show approval modal
+        // Show approval modal with ALL pending actions
         setAllPendingActions(data.pendingActions);
         setCurrentMessageIndex(messages.length); // Index of the new message
         setCurrentActionIndex(0);
@@ -474,20 +492,6 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
             }}>
               {msg.content}
             </div>
-            {/* Show indicator if actions need approval */}
-            {msg.pendingActions && msg.pendingActions.length > 0 && (
-              <div style={{
-                marginTop: '0.5rem',
-                padding: '0.5rem',
-                background: '#FFF9C4',
-                border: '2px solid #000000',
-                borderRadius: '0',
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                fontWeight: '700',
-              }}>
-                ⚠️ {msg.pendingActions.length} action(s) pending approval
-              </div>
-            )}
             
             {msg.functionCalls && msg.functionCalls.length > 0 && (
               <div style={{
