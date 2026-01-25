@@ -391,9 +391,9 @@ export async function POST(request: NextRequest) {
       content: message,
     });
 
-    // Use Qwen3 Coder free model from OpenRouter (supports function calling)
+    // Use Llama 3.3 70B Instruct free model from OpenRouter (supports function calling)
     // Free tier model that supports tool use which is required for function calling
-    const modelName = 'qwen/qwen3-coder:free';
+    const modelName = 'meta-llama/llama-3.3-70b-instruct:free';
 
     try {
       const completion = await openai.chat.completions.create({
