@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ReminderForm from '@/components/ReminderForm';
 import ReminderList from '@/components/ReminderList';
 import UpdateDueDateModal from '@/components/UpdateDueDateModal';
+import EditDelayMessageModal from '@/components/EditDelayMessageModal';
 
 export interface Reminder {
   id: number;
@@ -26,6 +27,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showDelayModal, setShowDelayModal] = useState(false);
 
   useEffect(() => {
     fetchReminders();
@@ -72,6 +74,17 @@ export default function Home() {
 
   const handleDueDateUpdated = () => {
     setShowUpdateModal(false);
+    setSelectedReminder(null);
+    fetchReminders();
+  };
+
+  const handleEditDelayMessage = (reminder: Reminder) => {
+    setSelectedReminder(reminder);
+    setShowDelayModal(true);
+  };
+
+  const handleDelayMessageUpdated = () => {
+    setShowDelayModal(false);
     setSelectedReminder(null);
     fetchReminders();
   };
@@ -132,11 +145,12 @@ export default function Home() {
             reminders={reminders}
             onComplete={handleComplete}
             onUpdateDueDate={handleUpdateDueDate}
+            onEditDelayMessage={handleEditDelayMessage}
           />
         )}
       </div>
 
-      {showUpdateModal && selectedReminder && (
+        {showUpdateModal && selectedReminder && (
         <UpdateDueDateModal
           reminder={selectedReminder}
           onClose={() => {
@@ -144,6 +158,17 @@ export default function Home() {
             setSelectedReminder(null);
           }}
           onUpdated={handleDueDateUpdated}
+        />
+      )}
+
+      {showDelayModal && selectedReminder && (
+        <EditDelayMessageModal
+          reminder={selectedReminder}
+          onClose={() => {
+            setShowDelayModal(false);
+            setSelectedReminder(null);
+          }}
+          onUpdated={handleDelayMessageUpdated}
         />
       )}
     </main>

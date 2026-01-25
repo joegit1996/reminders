@@ -353,7 +353,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                 }}
               />
               <small style={{ color: '#666', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>
-                Use DD.MM.YYYY as a placeholder for the new due date
+                The new due date will be automatically appended to your message when sent
               </small>
             </div>
             <div>

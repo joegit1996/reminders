@@ -63,8 +63,8 @@ export async function sendDelayMessage(
   const year = dateObj.getFullYear();
   const formattedDate = `${day}.${month}.${year}`;
 
-  // Replace DD.MM.YYYY placeholder with actual date
-  const message = messageTemplate.replace(/DD\.MM\.YYYY/g, formattedDate);
+  // Automatically append the new due date to the message
+  const message = `${messageTemplate}\n\nNew expected due date: ${formattedDate}`;
 
   const results = { sent: 0, failed: 0 };
 

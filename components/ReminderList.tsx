@@ -20,9 +20,10 @@ interface ReminderListProps {
   reminders: Reminder[];
   onComplete: (id: number) => void;
   onUpdateDueDate: (reminder: Reminder) => void;
+  onEditDelayMessage: (reminder: Reminder) => void;
 }
 
-export default function ReminderList({ reminders, onComplete, onUpdateDueDate }: ReminderListProps) {
+export default function ReminderList({ reminders, onComplete, onUpdateDueDate, onEditDelayMessage }: ReminderListProps) {
   if (reminders.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
@@ -99,7 +100,7 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate }:
                     )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, flexWrap: 'wrap' }}>
                   {!reminder.is_complete && (
                     <>
                       <button
@@ -116,6 +117,21 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate }:
                         }}
                       >
                         Update Due Date
+                      </button>
+                      <button
+                        onClick={() => onEditDelayMessage(reminder)}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#8b5cf6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                        }}
+                      >
+                        Edit Delay Message
                       </button>
                       <button
                         onClick={() => onComplete(reminder.id)}

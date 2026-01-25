@@ -1,0 +1,234 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface Reminder {
+  id: number;
+  text: string;
+  description: string | null;
+  due_date: string;
+  period_days: number;
+  slack_webhook: string;
+  delay_message: string | null;
+  delay_webhooks: string[];
+  is_complete: boolean;
+  last_sent: string | null;
+  created_at: string;
+}
+
+interface SavedWebhook {
+  id: number;
+  name: string;
+  webhook_url: string;
+}
+
+interface EditDelayMessageModalProps {
+  reminder: Reminder;
+  onClose: () => void;
+  onUpdated: () => void;
+}
+
+export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: EditDelayMessageModalProps) {
+  const [delayMessage, setDelayMessage] = useState(reminder.delay_message || '');
+  const [delayWebhooks, setDelayWebhooks] = useState<string[]>(reminder.delay_webhooks || []);
+  const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchSavedWebhooks();
+  }, []);
+
+  const fetchSavedWebhooks = async () => {
+    try {
+      const response = await fetch('/api/webhooks');
+      if (response.ok) {
+        const data = await response.json();
+        setSavedWebhooks(data);
+      }
+    } catch (error) {
+      console.error('Error fetching saved webhooks:', error);
+    }
+  };
+
+  const handleDelayWebhookToggle = (webhookUrl: string) => {
+    const current = delayWebhooks;
+    if (current.includes(webhookUrl)) {
+      setDelayWebhooks(current.filter(w => w !== webhookUrl));
+    } else {
+      setDelayWebhooks([...current, webhookUrl]);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/reminders/${reminder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update-delay-config',
+          delayMessage: delayMessage || null,
+          delayWebhooks: delayWebhooks,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update delay configuration');
+      }
+
+      onUpdated();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          maxWidth: '600px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
+          Edit Delay Notification Settings
+        </h2>
+        <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+          <strong>{reminder.text}</strong>
+        </p>
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="delayMessage" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+              Delay Message Template
+            </label>
+            <textarea
+              id="delayMessage"
+              value={delayMessage}
+              onChange={(e) => setDelayMessage(e.target.value)}
+              placeholder='e.g., Unfortunately the FKAutoparts release will be delayed'
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+              }}
+            />
+            <small style={{ color: '#666', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>
+              The new due date will be automatically appended to your message when sent
+            </small>
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+              Delay Notification Webhooks (select multiple)
+            </label>
+            <small style={{ color: '#666', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>
+              These webhooks will ONLY receive delay messages when the due date is updated. They are completely separate from the reminder webhook.
+            </small>
+            {savedWebhooks.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', background: '#f9fafb', borderRadius: '6px' }}>
+                {savedWebhooks.map((wh) => (
+                  <label key={wh.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={delayWebhooks.includes(wh.webhook_url)}
+                      onChange={() => handleDelayWebhookToggle(wh.webhook_url)}
+                    />
+                    <span>{wh.name}</span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: '#666', fontSize: '0.875rem', padding: '1rem', background: '#f9fafb', borderRadius: '6px' }}>
+                No saved webhooks. Go to <a href="/webhooks" style={{ color: '#3b82f6' }}>Manage Webhooks</a> to add some.
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div style={{
+              padding: '0.75rem',
+              background: '#fee',
+              border: '1px solid #fcc',
+              borderRadius: '6px',
+              color: '#c33',
+              marginBottom: '1rem',
+            }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: '#e5e7eb',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                fontWeight: '500',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: loading ? '#ccc' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontWeight: '500',
+              }}
+            >
+              {loading ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
