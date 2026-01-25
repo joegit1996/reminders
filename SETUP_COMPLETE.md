@@ -11,13 +11,17 @@
 
 ## What You Need to Do Next
 
-### 1. Set Up Vercel Postgres Database
+### 1. Set Up Supabase Database
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Open your `reminders` project
-3. Go to the **Storage** tab
-4. Click **Create Database** → Select **Postgres**
-5. Copy the connection strings (you'll need them in the next step)
+1. Go to [Supabase](https://supabase.com) and sign up/login (free tier available)
+2. Click **New Project**
+3. Choose a name, database password, and region
+4. Wait for project setup (~2 minutes)
+5. Go to **Project Settings** → **API**
+6. Copy your **Project URL** and **anon/public key**
+7. Go to **SQL Editor** → **New Query**
+8. Copy the contents of `supabase-setup.sql` and paste → Click **Run**
+9. Verify tables were created in **Table Editor**
 
 ### 2. Add Environment Variables
 
@@ -25,11 +29,12 @@
 2. Add these variables:
 
    ```
-   POSTGRES_URL=<from your Postgres database>
-   POSTGRES_PRISMA_URL=<from your Postgres database>
-   POSTGRES_URL_NON_POOLING=<from your Postgres database>
+   NEXT_PUBLIC_SUPABASE_URL=<your-project-url>
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
    CRON_SECRET=<generate with: openssl rand -hex 16>
    ```
+   
+   Make sure to add them for **Production**, **Preview**, and **Development** environments
 
 3. Make sure to add them for **Production**, **Preview**, and **Development** environments
 
