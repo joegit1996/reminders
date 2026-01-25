@@ -15,13 +15,37 @@ interface ActionFormFieldsProps {
   onArgsChange: (args: any) => void;
 }
 
+interface Webhook {
+  id: number;
+  name: string;
+  webhook_url: string;
+}
+
 export default function ActionFormFields({ action, onArgsChange }: ActionFormFieldsProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [localArgs, setLocalArgs] = useState(action.args || {});
+  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
 
   useEffect(() => {
     onArgsChange(localArgs);
   }, [localArgs, onArgsChange]);
+
+  useEffect(() => {
+    // Fetch webhooks to show names instead of URLs
+    fetch('/api/webhooks')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setWebhooks(data);
+        }
+      })
+      .catch(err => console.error('Failed to fetch webhooks:', err));
+  }, []);
+
+  const getWebhookName = (url: string): string => {
+    const webhook = webhooks.find(w => w.webhook_url === url);
+    return webhook ? webhook.name : url;
+  };
 
   const renderField = (key: string, schema: any, value: any, path: string = '') => {
     const fullPath = path ? `${path}.${key}` : key;
@@ -45,6 +69,7 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
 
     if (fieldType === 'array' && fieldSchema.items) {
       const arrayValue = Array.isArray(value) ? value : [];
+      const isWebhookArray = key.toLowerCase().includes('webhook');
       return (
         <div key={key} style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', fontWeight: '700', marginBottom: '0.5rem', fontSize: isMobile ? '0.875rem' : '1rem' }}>
@@ -57,6 +82,42 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
                 Object.keys(fieldSchema.items.properties || {}).map((subKey) =>
                   renderField(subKey, fieldSchema.items, item?.[subKey] || '', `${fullPath}[${idx}]`)
                 )
+              ) : isWebhookArray ? (
+                <select
+                  value={item || ''}
+                  onChange={(e) => {
+                    const newArray = [...arrayValue];
+                    const selectedWebhook = webhooks.find(w => w.name === e.target.value || w.webhook_url === e.target.value);
+                    newArray[idx] = selectedWebhook ? selectedWebhook.webhook_url : e.target.value;
+                    const newArgs = { ...localArgs };
+                    if (path) {
+                      const pathParts = path.split('.');
+                      let current: any = newArgs;
+                      for (let i = 0; i < pathParts.length - 1; i++) {
+                        current = current[pathParts[i]] = current[pathParts[i]] || {};
+                      }
+                      current[pathParts[pathParts.length - 1]] = newArray;
+                    } else {
+                      newArgs[key] = newArray;
+                    }
+                    setLocalArgs(newArgs);
+                  }}
+                  style={{
+                    ...neoStyles.input,
+                    width: '100%',
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                  }}
+                >
+                  <option value="">Select webhook...</option>
+                  {webhooks.map((webhook) => (
+                    <option key={webhook.id} value={webhook.webhook_url}>
+                      {webhook.name}
+                    </option>
+                  ))}
+                  {item && !webhooks.find(w => w.webhook_url === item) && (
+                    <option value={item}>{item}</option>
+                  )}
+                </select>
               ) : (
                 <input
                   type="text"

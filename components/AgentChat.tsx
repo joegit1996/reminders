@@ -368,6 +368,14 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
             (el.style as any).WebkitOverflowScrolling = 'touch';
           }
         }}
+        onWheel={(e) => {
+          // Allow scrolling even when hovering over child elements
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          // Allow touch scrolling
+          e.stopPropagation();
+        }}
         style={{
           flex: '1 1 auto',
           overflowY: 'auto',
@@ -382,6 +390,8 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           borderRadius: '0',
           minHeight: 0,
           maxHeight: '100%',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {messages.map((msg, idx) => (
