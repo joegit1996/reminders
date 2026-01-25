@@ -217,7 +217,13 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                 marginBottom: '1rem',
                 width: '100%',
               }}>
-                <div style={{ flex: 1, minWidth: 0, maxWidth: '100%', width: '100%' }}>
+                <div style={{ 
+                  flex: isMobile ? 'none' : '1 1 auto', 
+                  minWidth: 0, 
+                  width: isMobile ? '100%' : 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}>
                   <h3 style={{
                     fontSize: isMobile ? '1rem' : '1.25rem',
                     fontWeight: '900',
@@ -233,30 +239,22 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                     {reminder.text}
                   </h3>
                   {reminder.description && (
-                    <div style={{
-                      width: '100%',
-                      background: '#FF6B6B',
-                      padding: '1rem',
-                      border: '2px solid #000000',
-                      borderRadius: '0',
+                    <p style={{
+                      fontSize: isMobile ? '0.875rem' : '1rem',
+                      color: '#000000',
                       marginBottom: '0.75rem',
+                      lineHeight: '1.5',
+                      wordBreak: 'break-word',
+                      fontWeight: '600',
+                      columnCount: isMobile ? 1 : 'auto',
+                      columnWidth: isMobile ? '100%' : '200px',
+                      columnGap: isMobile ? '0' : '2rem',
+                      columnFill: 'balance',
+                      width: '100%',
+                      flex: '1 1 auto',
                     }}>
-                      <p style={{
-                        fontSize: isMobile ? '0.875rem' : '1rem',
-                        color: '#000000',
-                        lineHeight: '1.5',
-                        wordBreak: 'break-word',
-                        fontWeight: '600',
-                        margin: 0,
-                        columnCount: isMobile ? 1 : 'auto',
-                        columnWidth: isMobile ? '100%' : '200px',
-                        columnGap: isMobile ? '0' : '2rem',
-                        columnFill: 'balance',
-                        width: '100%',
-                      }}>
-                        {reminder.description}
-                      </p>
-                    </div>
+                      {reminder.description}
+                    </p>
                   )}
                   <div style={{ 
                     display: 'flex', 
