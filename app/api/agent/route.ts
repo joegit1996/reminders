@@ -433,6 +433,15 @@ export async function POST(request: NextRequest) {
         messages: finalMessages as any,
       });
 
+      if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
+        console.error('[AGENT] No choices in finalCompletion (approval flow):', finalCompletion);
+        return NextResponse.json({
+          response: 'Sorry, I encountered an error processing your approval. Please try again.',
+          functionCalls: functionCallsData,
+          approved: true,
+        });
+      }
+
       return NextResponse.json({
         response: finalCompletion.choices[0].message.content || '',
         functionCalls: functionCallsData,
@@ -507,6 +516,13 @@ User: "create reminder for youssef about X"
         tool_choice: 'auto',
       });
 
+      if (!completion.choices || completion.choices.length === 0) {
+        console.error('[AGENT] No choices in completion:', completion);
+        return NextResponse.json({
+          response: 'Sorry, I encountered an error processing your request. Please try again.',
+        });
+      }
+
       const responseMessage = completion.choices[0].message;
 
       // If this is an approval request, execute the stored response message's tool calls
@@ -545,6 +561,15 @@ User: "create reminder for youssef about X"
           model: modelName,
           messages: finalMessages as any,
         });
+
+        if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
+          console.error('[AGENT] No choices in finalCompletion (approval duplicate):', finalCompletion);
+          return NextResponse.json({
+            response: 'Sorry, I encountered an error processing your approval. Please try again.',
+            functionCalls: functionCallsData,
+            approved: true,
+          });
+        }
 
         return NextResponse.json({
           response: finalCompletion.choices[0].message.content || '',
@@ -668,6 +693,14 @@ User: "create reminder for youssef about X"
           tool_choice: 'auto',
         });
 
+        if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
+          console.error('[AGENT] No choices in finalCompletion:', finalCompletion);
+          return NextResponse.json({
+            response: 'Sorry, I encountered an error processing your request. Please try again.',
+            functionCalls: functionCallsData,
+          });
+        }
+
         const finalResponseMessage = finalCompletion.choices[0].message;
 
         // Check if the follow-up response has tool calls (write operations)
@@ -771,6 +804,14 @@ User: "create reminder for youssef about X"
             model: modelName,
             messages: finalMessagesWithResults as any,
           });
+
+          if (!finalTextCompletion.choices || finalTextCompletion.choices.length === 0) {
+            console.error('[AGENT] No choices in finalTextCompletion:', finalTextCompletion);
+            return NextResponse.json({
+              response: 'Sorry, I encountered an error processing your request. Please try again.',
+              functionCalls: [...functionCallsData, ...followUpFunctionCallsData],
+            });
+          }
 
           return NextResponse.json({
             response: finalTextCompletion.choices[0].message.content || '',
