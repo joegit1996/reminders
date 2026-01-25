@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
 
 interface Reminder {
   id: number;
@@ -90,7 +91,7 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
+        background: neoStyles.modalOverlay.background,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -101,28 +102,29 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
     >
       <div
         style={{
-          background: 'white',
-          borderRadius: '12px',
+          background: neoStyles.modalContent.background,
+          border: neoStyles.modalContent.border,
+          borderRadius: neoStyles.modalContent.borderRadius,
+          boxShadow: neoStyles.modalContent.boxShadow,
           padding: isMobile ? '1.5rem' : '2rem',
           maxWidth: '600px',
           width: '100%',
           maxHeight: '90vh',
           overflow: 'auto',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
-          Update Due Date
+        <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '900', marginBottom: '1rem', color: '#000000', textTransform: 'uppercase' }}>
+          UPDATE DUE DATE
         </h2>
-        <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+        <p style={{ color: '#000000', marginBottom: '1.5rem', fontWeight: '700' }}>
           <strong>{reminder.text}</strong>
         </p>
 
         <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="currentDueDate" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-              Current Due Date
+            <label htmlFor="currentDueDate" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+              CURRENT DUE DATE
             </label>
             <input
               type="text"
@@ -130,19 +132,17 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
               value={format(new Date(reminder.due_date), 'yyyy-MM-dd')}
               disabled
               style={{
+                ...neoStyles.input,
                 width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                background: '#f5f5f5',
-                color: '#666',
+                background: '#E5E5E5',
+                opacity: 0.8,
               }}
             />
           </div>
 
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="newDueDate" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-              New Due Date *
+            <label htmlFor="newDueDate" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+              NEW DUE DATE *
             </label>
             <input
               type="date"
@@ -151,11 +151,14 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
               onChange={(e) => setNewDueDate(e.target.value)}
               required
               style={{
+                ...neoStyles.input,
                 width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '1rem',
+              }}
+              onFocus={(e) => {
+                e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+              }}
+              onBlur={(e) => {
+                e.target.style.boxShadow = 'none';
               }}
             />
           </div>
@@ -163,11 +166,13 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
           {error && (
             <div style={{
               padding: '0.75rem',
-              background: '#fee',
-              border: '1px solid #fcc',
-              borderRadius: '6px',
-              color: '#c33',
+              background: '#FF6B6B',
+              border: '3px solid #000000',
+              borderRadius: '0',
+              boxShadow: '4px 4px 0px 0px #000000',
+              color: '#000000',
               marginBottom: '1rem',
+              fontWeight: '700',
             }}>
               {error}
             </div>
@@ -183,43 +188,53 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
               type="button"
               onClick={onClose}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.neutral,
                 padding: '0.75rem 1.5rem',
-                background: '#e5e7eb',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '6px',
                 fontSize: isMobile ? '0.9rem' : '1rem',
-                cursor: 'pointer',
-                fontWeight: '500',
                 width: isMobile ? '100%' : 'auto',
               }}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+              }}
             >
-              Cancel
+              CANCEL
             </button>
             <button
               type="submit"
               disabled={loading}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.primary,
                 padding: '0.75rem 1.5rem',
-                background: loading ? '#ccc' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
                 fontSize: isMobile ? '0.9rem' : '1rem',
+                opacity: loading ? 0.6 : 1,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight: '500',
                 width: isMobile ? '100%' : 'auto',
               }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+              }}
             >
-              {loading ? 'Updating...' : 'Update'}
+              {loading ? 'UPDATING...' : 'UPDATE'}
             </button>
           </div>
         </form>
 
         {updateLogs.length > 0 && (
           <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem' }}>
-              Update History
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '900', marginBottom: '1rem', color: '#000000', textTransform: 'uppercase' }}>
+              UPDATE HISTORY
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {updateLogs.map((log) => (
@@ -227,9 +242,13 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
                   key={log.id}
                   style={{
                     padding: '0.75rem',
-                    background: '#f9fafb',
-                    borderRadius: '6px',
+                    background: '#FFFFFF',
+                    border: '3px solid #000000',
+                    borderRadius: '0',
+                    boxShadow: '4px 4px 0px 0px #000000',
                     fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: '#000000',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
@@ -237,7 +256,7 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
                       <strong>{format(new Date(log.old_due_date), 'MMM dd, yyyy')}</strong> →{' '}
                       <strong>{format(new Date(log.new_due_date), 'MMM dd, yyyy')}</strong>
                     </span>
-                    <span style={{ color: '#666' }}>
+                    <span style={{ color: '#000000' }}>
                       {format(new Date(log.updated_at), 'MMM dd, yyyy HH:mm')}
                     </span>
                   </div>

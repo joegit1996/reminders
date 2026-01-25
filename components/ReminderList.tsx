@@ -2,6 +2,7 @@
 
 import { format, differenceInDays } from 'date-fns';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
 import { useState, useEffect } from 'react';
 
 interface Reminder {
@@ -69,8 +70,8 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
 
   if (reminders.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: isMobile ? '2rem' : '3rem', color: '#666' }}>
-        <p style={{ fontSize: isMobile ? '1rem' : '1.2rem' }}>No reminders yet. Create one above!</p>
+      <div style={{ textAlign: 'center', padding: isMobile ? '2rem' : '3rem', color: '#000000' }}>
+        <p style={{ fontSize: isMobile ? '1rem' : '1.2rem', fontWeight: '700' }}>NO REMINDERS YET. CREATE ONE ABOVE!</p>
       </div>
     );
   }
@@ -85,8 +86,8 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
 
   return (
     <div>
-      <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '600', marginBottom: '1.5rem' }}>
-        Your Reminders ({reminders.length})
+      <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '900', marginBottom: '1.5rem', color: '#000000', textTransform: 'uppercase' }}>
+        YOUR REMINDERS ({reminders.length})
       </h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {reminders.map((reminder) => {
@@ -98,10 +99,11 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
               key={reminder.id}
               style={{
                 padding: isMobile ? '1rem' : '1.5rem',
-                border: `2px solid ${reminder.is_complete ? '#4ade80' : isOverdue ? '#f87171' : '#e5e7eb'}`,
-                borderRadius: '8px',
-                background: reminder.is_complete ? '#f0fdf4' : isOverdue ? '#fef2f2' : '#f9fafb',
-                opacity: reminder.is_complete ? 0.7 : 1,
+                border: `4px solid ${reminder.is_complete ? '#6BCB77' : isOverdue ? '#FF6B6B' : '#000000'}`,
+                borderRadius: '0',
+                background: reminder.is_complete ? '#FFFFFF' : isOverdue ? '#FFFFFF' : '#FFFFFF',
+                boxShadow: reminder.is_complete ? '4px 4px 0px 0px #6BCB77' : isOverdue ? '4px 4px 0px 0px #FF6B6B' : '8px 8px 0px 0px #000000',
+                opacity: reminder.is_complete ? 0.8 : 1,
               }}
             >
               <div style={{ 
@@ -115,20 +117,23 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{
                     fontSize: isMobile ? '1rem' : '1.2rem',
-                    fontWeight: '600',
+                    fontWeight: '900',
                     marginBottom: '0.5rem',
                     textDecoration: reminder.is_complete ? 'line-through' : 'none',
                     wordBreak: 'break-word',
+                    color: '#000000',
+                    textTransform: 'uppercase',
                   }}>
                     {reminder.text}
                   </h3>
                   {reminder.description && (
                     <p style={{
                       fontSize: isMobile ? '0.875rem' : '0.95rem',
-                      color: '#666',
+                      color: '#000000',
                       marginBottom: '0.5rem',
                       lineHeight: '1.5',
                       wordBreak: 'break-word',
+                      fontWeight: '600',
                     }}>
                       {reminder.description}
                     </p>
@@ -139,22 +144,23 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                     flexWrap: 'wrap', 
                     gap: '0.75rem', 
                     fontSize: isMobile ? '0.8rem' : '0.9rem', 
-                    color: '#666' 
+                    color: '#000000',
+                    fontWeight: '600',
                   }}>
                     <span>
-                      📅 Due: <strong>{format(new Date(reminder.due_date), 'MMM dd, yyyy')}</strong>
+                      📅 DUE: <strong>{format(new Date(reminder.due_date), 'MMM dd, yyyy')}</strong>
                     </span>
                     <span>
-                      ⏰ Days remaining: <strong style={{ color: isOverdue ? '#dc2626' : '#059669' }}>
-                        {daysRemaining >= 0 ? daysRemaining : `-${Math.abs(daysRemaining)} (overdue)`}
+                      ⏰ DAYS REMAINING: <strong style={{ color: isOverdue ? '#FF6B6B' : '#6BCB77' }}>
+                        {daysRemaining >= 0 ? daysRemaining : `-${Math.abs(daysRemaining)} (OVERDUE)`}
                       </strong>
                     </span>
                     <span>
-                      🔄 Period: <strong>{reminder.period_days} day{reminder.period_days !== 1 ? 's' : ''}</strong>
+                      🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
                     </span>
                     {reminder.last_sent && !isSmallMobile && (
                       <span>
-                        📤 Last sent: <strong>{format(new Date(reminder.last_sent), 'MMM dd, yyyy HH:mm')}</strong>
+                        📤 LAST SENT: <strong>{format(new Date(reminder.last_sent), 'MMM dd, yyyy HH:mm')}</strong>
                       </span>
                     )}
                   </div>
@@ -172,93 +178,108 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                       <button
                         onClick={() => onUpdateDueDate(reminder)}
                         style={{
+                          ...neoStyles.button,
+                          ...buttonVariants.primary,
                           padding: '0.5rem 1rem',
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
                           fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          cursor: 'pointer',
-                          fontWeight: '500',
                           flex: isSmallMobile ? '1' : '0',
                           minWidth: isSmallMobile ? '0' : 'auto',
                         }}
+                        onMouseEnter={(e) => {
+                          Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translate(0, 0)';
+                          e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                        }}
                       >
-                        {isSmallMobile ? 'Update Date' : 'Update Due Date'}
+                        {isSmallMobile ? 'UPDATE DATE' : 'UPDATE DUE DATE'}
                       </button>
                       <button
                         onClick={() => onEditDelayMessage(reminder)}
                         style={{
+                          ...neoStyles.button,
+                          background: '#A8E6CF',
+                          color: '#000000',
                           padding: '0.5rem 1rem',
-                          background: '#8b5cf6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
                           fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          cursor: 'pointer',
-                          fontWeight: '500',
                           flex: isSmallMobile ? '1' : '0',
                           minWidth: isSmallMobile ? '0' : 'auto',
                         }}
+                        onMouseEnter={(e) => {
+                          Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translate(0, 0)';
+                          e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                        }}
                       >
-                        {isSmallMobile ? 'Edit Delay' : 'Edit Delay Message'}
+                        {isSmallMobile ? 'EDIT DELAY' : 'EDIT DELAY MESSAGE'}
                       </button>
                       <button
                         onClick={() => onEditAutomatedMessages(reminder)}
                         style={{
+                          ...neoStyles.button,
+                          ...buttonVariants.warning,
                           padding: '0.5rem 1rem',
-                          background: '#f59e0b',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
                           fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          cursor: 'pointer',
-                          fontWeight: '500',
                           flex: isSmallMobile ? '1' : '0',
                           minWidth: isSmallMobile ? '0' : 'auto',
                         }}
+                        onMouseEnter={(e) => {
+                          Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translate(0, 0)';
+                          e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                        }}
                       >
-                        {isSmallMobile ? 'Auto Msgs' : 'Automated Messages'}
+                        {isSmallMobile ? 'AUTO MSGS' : 'AUTOMATED MESSAGES'}
                       </button>
                       <button
                         onClick={() => onComplete(reminder.id)}
                         style={{
+                          ...neoStyles.button,
+                          ...buttonVariants.success,
                           padding: '0.5rem 1rem',
-                          background: '#10b981',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
                           fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          cursor: 'pointer',
-                          fontWeight: '500',
                           flex: isSmallMobile ? '1' : '0',
                           minWidth: isSmallMobile ? '0' : 'auto',
                         }}
+                        onMouseEnter={(e) => {
+                          Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translate(0, 0)';
+                          e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                        }}
                       >
-                        {isSmallMobile ? 'Complete' : 'Mark Complete'}
+                        {isSmallMobile ? 'COMPLETE' : 'MARK COMPLETE'}
                       </button>
                     </>
                   )}
                   {reminder.is_complete && (
                     <span style={{
                       padding: '0.5rem 1rem',
-                      background: '#4ade80',
-                      color: 'white',
-                      borderRadius: '6px',
+                      background: '#6BCB77',
+                      color: '#000000',
+                      border: '3px solid #000000',
+                      borderRadius: '0',
+                      boxShadow: '4px 4px 0px 0px #000000',
                       fontSize: '0.875rem',
-                      fontWeight: '500',
+                      fontWeight: '700',
                     }}>
-                      ✓ Complete
+                      ✓ COMPLETE
                     </span>
                   )}
                 </div>
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.5rem' }}>
-                🔗 Webhook: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
+              <div style={{ fontSize: '0.8rem', color: '#000000', marginTop: '0.5rem', fontWeight: '600' }}>
+                🔗 WEBHOOK: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
               </div>
               {reminder.automated_messages && reminder.automated_messages.length > 0 && (
-                <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.25rem' }}>
-                  🤖 {reminder.automated_messages.length} automated message{reminder.automated_messages.length !== 1 ? 's' : ''} configured
+                <div style={{ fontSize: '0.8rem', color: '#000000', marginTop: '0.25rem', fontWeight: '600' }}>
+                  🤖 {reminder.automated_messages.length} AUTOMATED MESSAGE{reminder.automated_messages.length !== 1 ? 'S' : ''} CONFIGURED
                 </div>
               )}
             </div>
