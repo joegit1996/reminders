@@ -474,11 +474,18 @@ export async function POST(request: NextRequest) {
       return true;
     });
 
-    // Convert to OpenAI message format
-    const messages = filteredHistory.map((msg: any) => ({
-      role: msg.role === 'user' ? 'user' : 'assistant',
-      content: msg.content,
-    }));
+    // Limit conversation history to last 10 messages to avoid token limits and JSON issues
+    const limitedHistory = filteredHistory.slice(-10);
+
+    // Convert to OpenAI message format and validate
+    const messages = limitedHistory.map((msg: any) => {
+      // Ensure content is a string
+      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+      return {
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: content,
+      };
+    });
 
     // Add current user message
     messages.push({
@@ -728,18 +735,74 @@ User: "create reminder for youssef about X"
           }
         }
 
+        // Validate and sanitize function results before adding to messages
+        const sanitizedFunctionResults = functionResults.map((fr: any) => {
+          // Ensure content is a valid JSON string
+          let content = fr.content;
+          if (typeof content !== 'string') {
+            try {
+              content = JSON.stringify(content);
+            } catch (e) {
+              console.error('[AGENT] Failed to stringify function result:', e);
+              content = JSON.stringify({ error: 'Failed to serialize function result' });
+            }
+          } else {
+            // Validate that the string is valid JSON
+            try {
+              JSON.parse(content);
+            } catch (e) {
+              console.error('[AGENT] Function result content is not valid JSON:', content.substring(0, 200));
+              // Try to fix it by wrapping in an object
+              content = JSON.stringify({ raw: content });
+            }
+          }
+          return {
+            role: fr.role,
+            tool_call_id: fr.tool_call_id,
+            content: content,
+          };
+        });
+
+        // Validate responseMessage content
+        let responseMessageContent = responseMessage.content;
+        if (responseMessageContent && typeof responseMessageContent !== 'string') {
+          try {
+            responseMessageContent = JSON.stringify(responseMessageContent);
+          } catch (e) {
+            console.error('[AGENT] Failed to stringify responseMessage content:', e);
+            responseMessageContent = '';
+          }
+        }
+
+        // Create sanitized response message
+        const sanitizedResponseMessage = {
+          ...responseMessage,
+          content: responseMessageContent || '',
+        };
+
         // Add function results to messages and get final response
         const finalMessages = [
           ...messages,
-          responseMessage,
-          ...functionResults,
+          sanitizedResponseMessage,
+          ...sanitizedFunctionResults,
         ];
 
         // Log the messages being sent for debugging
         console.log('[AGENT] Sending follow-up request with', finalMessages.length, 'messages');
-        console.log('[AGENT] Function results count:', functionResults.length);
-        if (functionResults.length > 0) {
-          console.log('[AGENT] First function result content preview:', functionResults[0].content?.substring(0, 200));
+        console.log('[AGENT] Function results count:', sanitizedFunctionResults.length);
+        if (sanitizedFunctionResults.length > 0) {
+          console.log('[AGENT] First function result content preview:', sanitizedFunctionResults[0].content?.substring(0, 200));
+        }
+
+        // Validate final messages array before sending
+        try {
+          JSON.stringify(finalMessages);
+        } catch (e) {
+          console.error('[AGENT] Final messages array is not serializable:', e);
+          return NextResponse.json({
+            response: 'Sorry, I encountered an error preparing the request. Please try again.',
+            functionCalls: functionCallsData,
+          });
         }
 
         // Retry logic for API calls (up to 3 attempts)
