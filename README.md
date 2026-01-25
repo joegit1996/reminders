@@ -40,12 +40,23 @@ npm install
 
 ### 3. Configure Environment Variables
 
+**For Vercel Deployment:**
+1. Go to your project in [Vercel Dashboard](https://vercel.com/dashboard)
+2. Navigate to **Settings** → **Environment Variables**
+3. Add the following variables:
+   - `POSTGRES_URL` - From your Vercel Postgres database
+   - `POSTGRES_PRISMA_URL` - From your Vercel Postgres database
+   - `POSTGRES_URL_NON_POOLING` - From your Vercel Postgres database
+   - `CRON_SECRET` - Generate a random secret: `openssl rand -hex 16`
+
+**For Local Development:**
 Create a `.env.local` file in the root directory:
 
 ```env
 POSTGRES_URL="your_postgres_url"
 POSTGRES_PRISMA_URL="your_prisma_url"
 POSTGRES_URL_NON_POOLING="your_non_pooling_url"
+CRON_SECRET="your-random-secret-here"
 ```
 
 For local development, you can also use:
@@ -55,35 +66,39 @@ DATABASE_URL="your_postgres_url"
 
 ### 4. Deploy to Vercel
 
-```bash
-# Install Vercel CLI if you haven't
-npm i -g vercel
+✅ **Already deployed!** The app has been pushed to GitHub and deployed to Vercel.
 
-# Deploy
-vercel
-```
+**Next Steps:**
+1. Set up Vercel Postgres database (see step 2)
+2. Add environment variables in Vercel Dashboard (see step 3)
+3. Redeploy to apply environment variables:
+   ```bash
+   vercel --prod
+   ```
 
-Or connect your GitHub repository to Vercel for automatic deployments.
+The app will auto-initialize the database tables on first API call.
 
 ### 5. Configure Cron Job
 
-The cron job is configured in `vercel.json` to run every 6 hours. You can adjust the schedule:
+The cron job is configured in `vercel.json` to run daily at 9 AM UTC (Hobby plan compatible):
 
 ```json
 {
   "crons": [
     {
       "path": "/api/cron/send-reminders",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
 ```
 
+**Note:** Hobby accounts are limited to daily cron jobs. To run more frequently, upgrade to Pro plan.
+
 Cron schedule format: `minute hour day month weekday`
-- `0 */6 * * *` = Every 6 hours
-- `0 9 * * *` = Daily at 9 AM
-- `*/30 * * * *` = Every 30 minutes
+- `0 9 * * *` = Daily at 9 AM UTC (current)
+- `0 12 * * *` = Daily at 12 PM UTC
+- For Pro plan: `0 */6 * * *` = Every 6 hours
 
 ## Usage
 
