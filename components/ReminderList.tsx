@@ -116,21 +116,22 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{
-                    fontSize: isMobile ? '1rem' : '1.2rem',
+                    fontSize: isMobile ? '1rem' : '1.25rem',
                     fontWeight: '900',
-                    marginBottom: '0.5rem',
+                    marginBottom: '0.75rem',
                     textDecoration: reminder.is_complete ? 'line-through' : 'none',
                     wordBreak: 'break-word',
                     color: '#000000',
                     textTransform: 'uppercase',
+                    lineHeight: '1.3',
                   }}>
                     {reminder.text}
                   </h3>
                   {reminder.description && (
                     <p style={{
-                      fontSize: isMobile ? '0.875rem' : '0.95rem',
+                      fontSize: isMobile ? '0.875rem' : '1rem',
                       color: '#000000',
-                      marginBottom: '0.5rem',
+                      marginBottom: '0.75rem',
                       lineHeight: '1.5',
                       wordBreak: 'break-word',
                       fontWeight: '600',
@@ -142,24 +143,25 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                     display: 'flex', 
                     flexDirection: isSmallMobile ? 'column' : 'row',
                     flexWrap: 'wrap', 
-                    gap: '0.75rem', 
-                    fontSize: isMobile ? '0.8rem' : '0.9rem', 
+                    gap: isMobile ? '0.5rem' : '1rem', 
+                    fontSize: isMobile ? '0.75rem' : isSmallMobile ? '0.8rem' : '0.875rem', 
                     color: '#000000',
                     fontWeight: '600',
+                    lineHeight: '1.6',
                   }}>
-                    <span>
+                    <span style={{ whiteSpace: 'nowrap' }}>
                       📅 DUE: <strong>{format(new Date(reminder.due_date), 'MMM dd, yyyy')}</strong>
                     </span>
-                    <span>
+                    <span style={{ whiteSpace: 'nowrap' }}>
                       ⏰ DAYS REMAINING: <strong style={{ color: isOverdue ? '#FF6B6B' : '#6BCB77' }}>
                         {daysRemaining >= 0 ? daysRemaining : `-${Math.abs(daysRemaining)} (OVERDUE)`}
                       </strong>
                     </span>
-                    <span>
+                    <span style={{ whiteSpace: 'nowrap' }}>
                       🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
                     </span>
-                    {reminder.last_sent && !isSmallMobile && (
-                      <span>
+                    {reminder.last_sent && (
+                      <span style={{ whiteSpace: 'nowrap' }}>
                         📤 LAST SENT: <strong>{format(new Date(reminder.last_sent), 'MMM dd, yyyy HH:mm')}</strong>
                       </span>
                     )}
@@ -168,10 +170,11 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                 <div style={{ 
                   display: 'flex', 
                   flexDirection: isSmallMobile ? 'column' : 'row',
-                  gap: '0.5rem', 
+                  gap: isMobile ? '0.5rem' : '0.75rem', 
                   flexShrink: 0, 
                   flexWrap: 'wrap',
                   width: isMobile ? '100%' : 'auto',
+                  alignItems: isMobile ? 'stretch' : 'flex-start',
                 }}>
                   {!reminder.is_complete && (
                     <>
@@ -180,10 +183,11 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                         style={{
                           ...neoStyles.button,
                           ...buttonVariants.primary,
-                          padding: '0.5rem 1rem',
+                          padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.25rem',
                           fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          flex: isSmallMobile ? '1' : '0',
-                          minWidth: isSmallMobile ? '0' : 'auto',
+                          flex: isSmallMobile ? '1' : '0 1 auto',
+                          minWidth: isMobile ? '0' : '140px',
+                          whiteSpace: 'nowrap',
                         }}
                         onMouseEnter={(e) => {
                           Object.assign(e.currentTarget.style, neoStyles.buttonHover);
@@ -201,10 +205,11 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                           ...neoStyles.button,
                           background: '#A8E6CF',
                           color: '#000000',
-                          padding: '0.5rem 1rem',
+                          padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.25rem',
                           fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          flex: isSmallMobile ? '1' : '0',
-                          minWidth: isSmallMobile ? '0' : 'auto',
+                          flex: isSmallMobile ? '1' : '0 1 auto',
+                          minWidth: isMobile ? '0' : '140px',
+                          whiteSpace: 'nowrap',
                         }}
                         onMouseEnter={(e) => {
                           Object.assign(e.currentTarget.style, neoStyles.buttonHover);
@@ -221,10 +226,11 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                         style={{
                           ...neoStyles.button,
                           ...buttonVariants.warning,
-                          padding: '0.5rem 1rem',
+                          padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.25rem',
                           fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          flex: isSmallMobile ? '1' : '0',
-                          minWidth: isSmallMobile ? '0' : 'auto',
+                          flex: isSmallMobile ? '1' : '0 1 auto',
+                          minWidth: isMobile ? '0' : '160px',
+                          whiteSpace: 'nowrap',
                         }}
                         onMouseEnter={(e) => {
                           Object.assign(e.currentTarget.style, neoStyles.buttonHover);
@@ -241,10 +247,11 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                         style={{
                           ...neoStyles.button,
                           ...buttonVariants.success,
-                          padding: '0.5rem 1rem',
+                          padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.25rem',
                           fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          flex: isSmallMobile ? '1' : '0',
-                          minWidth: isSmallMobile ? '0' : 'auto',
+                          flex: isSmallMobile ? '1' : '0 1 auto',
+                          minWidth: isMobile ? '0' : '140px',
+                          whiteSpace: 'nowrap',
                         }}
                         onMouseEnter={(e) => {
                           Object.assign(e.currentTarget.style, neoStyles.buttonHover);
