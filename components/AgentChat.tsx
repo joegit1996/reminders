@@ -364,12 +364,10 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         ref={messagesContainerRef}
         style={{
           flex: '1 1 0',
-          overflowY: 'scroll',
+          overflowY: 'auto',
           overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch' as any,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1rem',
+          display: 'block',
           padding: '0.5rem',
           marginBottom: '1rem',
           background: '#F9FAFB',
@@ -378,6 +376,11 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           minHeight: 0,
         }}
       >
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+        }}>
         {messages.map((msg, idx) => (
           <div
             key={idx}
@@ -412,6 +415,9 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
                   borderRadius: '0',
                   boxShadow: '4px 4px 0px #000000',
                   width: '100%',
+                  maxHeight: '400px',
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
                 }}
               >
                 <div style={{
