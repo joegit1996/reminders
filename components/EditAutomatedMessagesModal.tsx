@@ -229,18 +229,19 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
           {/* Add/Edit Form */}
           <div style={{
             padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
+            background: '#FFFFFF',
+            borderRadius: '0',
             marginBottom: '1.5rem',
-            border: '1px solid #e5e7eb',
+            border: '3px solid #000000',
+            boxShadow: '4px 4px 0px 0px #000000',
           }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>
-              {editingIndex !== null ? 'Edit Message' : 'Add New Automated Message'}
+            <h3 style={{ fontSize: '1rem', fontWeight: '900', marginBottom: '1rem', color: '#000000', textTransform: 'uppercase' }}>
+              {editingIndex !== null ? 'EDIT MESSAGE' : 'ADD NEW AUTOMATED MESSAGE'}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label htmlFor="days_before" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                  Days Before Due Date *
+                <label htmlFor="days_before" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+                  DAYS BEFORE DUE DATE *
                 </label>
                 <input
                   type="number"
@@ -251,17 +252,20 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                   required
                   placeholder="e.g., 7"
                   style={{
+                    ...neoStyles.input,
                     width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
               <div>
-                <label htmlFor="title" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                  Title *
+                <label htmlFor="title" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+                  TITLE *
                 </label>
                 <input
                   type="text"
@@ -271,17 +275,20 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                   required
                   placeholder="e.g., Upcoming Task Reminder"
                   style={{
+                    ...neoStyles.input,
                     width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
               <div>
-                <label htmlFor="description" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                  Description *
+                <label htmlFor="description" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+                  DESCRIPTION *
                 </label>
                 <textarea
                   id="description"
@@ -291,19 +298,22 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                   rows={3}
                   placeholder="Message description..."
                   style={{
+                    ...neoStyles.input,
                     width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
                     fontFamily: 'inherit',
                     resize: 'vertical',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
               <div>
-                <label htmlFor="webhook_url" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                  Webhook *
+                <label htmlFor="webhook_url" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+                  WEBHOOK *
                 </label>
                 {savedWebhooks.length > 0 && (
                   <select
@@ -314,12 +324,15 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                     }}
                     value={formData.webhook_url}
                     style={{
+                      ...neoStyles.input,
                       width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '1rem',
                       marginBottom: '0.5rem',
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.boxShadow = 'none';
                     }}
                   >
                     <option value="">Select a saved webhook...</option>
@@ -338,11 +351,14 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                   required
                   placeholder="https://hooks.slack.com/services/... or select from saved webhooks above"
                   style={{
+                    ...neoStyles.input,
                     width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
@@ -353,35 +369,41 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                       type="button"
                       onClick={handleUpdate}
                       style={{
+                        ...neoStyles.button,
+                        ...buttonVariants.primary,
                         padding: '0.75rem 1.5rem',
-                        background: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
                         fontSize: '1rem',
-                        cursor: 'pointer',
-                        fontWeight: '500',
                         flex: 1,
                       }}
+                      onMouseEnter={(e) => {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translate(0, 0)';
+                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                      }}
                     >
-                      Update
+                      UPDATE
                     </button>
                     <button
                       type="button"
                       onClick={handleCancel}
                       style={{
+                        ...neoStyles.button,
+                        ...buttonVariants.neutral,
                         padding: '0.75rem 1.5rem',
-                        background: '#e5e7eb',
-                        color: '#374151',
-                        border: 'none',
-                        borderRadius: '6px',
                         fontSize: '1rem',
-                        cursor: 'pointer',
-                        fontWeight: '500',
                         flex: 1,
                       }}
+                      onMouseEnter={(e) => {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translate(0, 0)';
+                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                      }}
                     >
-                      Cancel
+                      CANCEL
                     </button>
                   </>
                 ) : (
@@ -389,18 +411,21 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                     type="button"
                     onClick={handleAdd}
                     style={{
+                      ...neoStyles.button,
+                      ...buttonVariants.success,
                       padding: '0.75rem 1.5rem',
-                      background: '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
                       fontSize: '1rem',
-                      cursor: 'pointer',
-                      fontWeight: '500',
                       width: '100%',
                     }}
+                    onMouseEnter={(e) => {
+                      Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translate(0, 0)';
+                      e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                    }}
                   >
-                    Add Message
+                    ADD MESSAGE
                   </button>
                 )}
               </div>
@@ -410,8 +435,8 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
           {/* List of Automated Messages */}
           {automatedMessages.length > 0 && (
             <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>
-                Automated Messages ({automatedMessages.length})
+              <h3 style={{ fontSize: '1rem', fontWeight: '900', marginBottom: '1rem', color: '#000000', textTransform: 'uppercase' }}>
+                AUTOMATED MESSAGES ({automatedMessages.length})
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {automatedMessages.map((msg, index) => (
@@ -419,24 +444,25 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                     key={msg.id}
                     style={{
                       padding: '1rem',
-                      background: msg.sent ? '#f0fdf4' : 'white',
-                      border: `1px solid ${msg.sent ? '#4ade80' : '#e5e7eb'}`,
-                      borderRadius: '6px',
+                      background: '#FFFFFF',
+                      border: `3px solid ${msg.sent ? '#6BCB77' : '#000000'}`,
+                      borderRadius: '0',
+                      boxShadow: `4px 4px 0px 0px ${msg.sent ? '#6BCB77' : '#000000'}`,
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                        <div style={{ fontWeight: '700', marginBottom: '0.25rem', color: '#000000' }}>
                           {msg.title}
                         </div>
-                        <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.5rem' }}>
+                        <div style={{ fontSize: '0.875rem', color: '#000000', marginBottom: '0.5rem', fontWeight: '600' }}>
                           {msg.description}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#999', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                          <span>📅 {msg.days_before} day{msg.days_before !== 1 ? 's' : ''} before due date</span>
+                        <div style={{ fontSize: '0.75rem', color: '#000000', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontWeight: '600' }}>
+                          <span>📅 {msg.days_before} DAY{msg.days_before !== 1 ? 'S' : ''} BEFORE DUE DATE</span>
                           <span>🔗 {getWebhookName(msg.webhook_url)}</span>
                           {msg.sent && msg.sent_at && (
-                            <span>✓ Sent: {new Date(msg.sent_at).toLocaleDateString()}</span>
+                            <span>✓ SENT: {new Date(msg.sent_at).toLocaleDateString()}</span>
                           )}
                         </div>
                       </div>
@@ -446,34 +472,40 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                             type="button"
                             onClick={() => handleEdit(index)}
                             style={{
+                              ...neoStyles.button,
+                              ...buttonVariants.primary,
                               padding: '0.5rem 1rem',
-                              background: '#3b82f6',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
                               fontSize: '0.875rem',
-                              cursor: 'pointer',
-                              fontWeight: '500',
+                            }}
+                            onMouseEnter={(e) => {
+                              Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translate(0, 0)';
+                              e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
                             }}
                           >
-                            Edit
+                            EDIT
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={() => handleDelete(index)}
                           style={{
+                            ...neoStyles.button,
+                            ...buttonVariants.danger,
                             padding: '0.5rem 1rem',
-                            background: '#ef4444',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
                             fontSize: '0.875rem',
-                            cursor: 'pointer',
-                            fontWeight: '500',
+                          }}
+                          onMouseEnter={(e) => {
+                            Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translate(0, 0)';
+                            e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
                           }}
                         >
-                          Delete
+                          DELETE
                         </button>
                       </div>
                     </div>
@@ -486,11 +518,13 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
           {error && (
             <div style={{
               padding: '0.75rem',
-              background: '#fee',
-              border: '1px solid #fcc',
-              borderRadius: '6px',
-              color: '#c33',
+              background: '#FF6B6B',
+              border: '3px solid #000000',
+              borderRadius: '0',
+              boxShadow: '4px 4px 0px 0px #000000',
+              color: '#000000',
               marginBottom: '1rem',
+              fontWeight: '700',
             }}>
               {error}
             </div>
@@ -506,35 +540,45 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
               type="button"
               onClick={onClose}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.neutral,
                 padding: '0.75rem 1.5rem',
-                background: '#e5e7eb',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '6px',
                 fontSize: isMobile ? '0.9rem' : '1rem',
-                cursor: 'pointer',
-                fontWeight: '500',
                 width: isMobile ? '100%' : 'auto',
               }}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+              }}
             >
-              Cancel
+              CANCEL
             </button>
             <button
               type="submit"
               disabled={loading}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.primary,
                 padding: '0.75rem 1.5rem',
-                background: loading ? '#ccc' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
                 fontSize: isMobile ? '0.9rem' : '1rem',
+                opacity: loading ? 0.6 : 1,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight: '500',
                 width: isMobile ? '100%' : 'auto',
               }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+              }}
             >
-              {loading ? 'Saving...' : 'Save'}
+              {loading ? 'SAVING...' : 'SAVE'}
             </button>
           </div>
         </form>
