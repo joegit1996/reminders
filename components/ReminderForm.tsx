@@ -23,12 +23,29 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
     slackWebhook: '',
     delayMessage: '',
     delayWebhooks: [] as string[],
+    automatedMessages: [] as Array<{
+      id: string;
+      days_before: number;
+      title: string;
+      description: string;
+      webhook_url: string;
+      sent: boolean;
+      sent_at: string | null;
+    }>,
   });
   const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
   const [showDelayConfig, setShowDelayConfig] = useState(false);
+  const [showAutomatedMessages, setShowAutomatedMessages] = useState(false);
   const [showAddWebhook, setShowAddWebhook] = useState(false);
   const [newWebhookName, setNewWebhookName] = useState('');
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
+  const [automatedMessageForm, setAutomatedMessageForm] = useState({
+    days_before: '',
+    title: '',
+    description: '',
+    webhook_url: '',
+  });
+  const [editingAutomatedMessageIndex, setEditingAutomatedMessageIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -106,6 +123,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
           slackWebhook: formData.slackWebhook,
           delayMessage: formData.delayMessage || null,
           delayWebhooks: formData.delayWebhooks.length > 0 ? formData.delayWebhooks : [],
+          automatedMessages: formData.automatedMessages,
         }),
       });
 
@@ -123,7 +141,15 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
         slackWebhook: '',
         delayMessage: '',
         delayWebhooks: [],
+        automatedMessages: [],
       });
+      setAutomatedMessageForm({
+        days_before: '',
+        title: '',
+        description: '',
+        webhook_url: '',
+      });
+      setShowAutomatedMessages(false);
       setShowDelayConfig(false);
 
       onReminderCreated();
@@ -382,6 +408,330 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                 <p style={{ color: '#666', fontSize: '0.875rem' }}>No saved webhooks. Add one above to use delay notifications.</p>
               )}
             </div>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowAutomatedMessages(!showAutomatedMessages)}
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            background: showAutomatedMessages ? '#e5e7eb' : '#f3f4f6',
+            border: '1px solid #ddd',
+            borderRadius: '6px',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            fontWeight: '500',
+          }}
+        >
+          {showAutomatedMessages ? '▼ Hide' : '▶ Show'} Automated Messages (Optional)
+        </button>
+        {showAutomatedMessages && (
+          <div style={{ marginTop: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+            <p style={{ fontSize: '0.875rem', color: '#666', marginBottom: '1rem' }}>
+              Send automated messages N days before the due date. Each message is sent only once.
+            </p>
+            
+            {/* Add/Edit Form */}
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'white', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+              <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>
+                {editingAutomatedMessageIndex !== null ? 'Edit Automated Message' : 'Add New Automated Message'}
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label htmlFor="auto_days_before" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                    Days Before Due Date *
+                  </label>
+                  <input
+                    type="number"
+                    id="auto_days_before"
+                    value={automatedMessageForm.days_before}
+                    onChange={(e) => setAutomatedMessageForm({ ...automatedMessageForm, days_before: e.target.value })}
+                    min="1"
+                    placeholder="e.g., 7"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '1rem',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="auto_title" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    id="auto_title"
+                    value={automatedMessageForm.title}
+                    onChange={(e) => setAutomatedMessageForm({ ...automatedMessageForm, title: e.target.value })}
+                    placeholder="e.g., Upcoming Task Reminder"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '1rem',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="auto_description" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                    Description *
+                  </label>
+                  <textarea
+                    id="auto_description"
+                    value={automatedMessageForm.description}
+                    onChange={(e) => setAutomatedMessageForm({ ...automatedMessageForm, description: e.target.value })}
+                    rows={3}
+                    placeholder="Message description..."
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '1rem',
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="auto_webhook" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                    Webhook *
+                  </label>
+                  {savedWebhooks.length > 0 && (
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setAutomatedMessageForm({ ...automatedMessageForm, webhook_url: e.target.value });
+                        }
+                      }}
+                      value={automatedMessageForm.webhook_url}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '1rem',
+                        marginBottom: '0.5rem',
+                      }}
+                    >
+                      <option value="">Select a saved webhook...</option>
+                      {savedWebhooks.map((wh) => (
+                        <option key={wh.id} value={wh.webhook_url}>
+                          {wh.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <input
+                    type="url"
+                    id="auto_webhook"
+                    value={automatedMessageForm.webhook_url}
+                    onChange={(e) => setAutomatedMessageForm({ ...automatedMessageForm, webhook_url: e.target.value })}
+                    placeholder="https://hooks.slack.com/services/... or select from saved webhooks above"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '1rem',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {editingAutomatedMessageIndex !== null ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...formData.automatedMessages];
+                          updated[editingAutomatedMessageIndex] = {
+                            id: updated[editingAutomatedMessageIndex].id,
+                            days_before: parseInt(automatedMessageForm.days_before),
+                            title: automatedMessageForm.title,
+                            description: automatedMessageForm.description,
+                            webhook_url: automatedMessageForm.webhook_url,
+                            sent: false,
+                            sent_at: null,
+                          };
+                          setFormData({ ...formData, automatedMessages: updated });
+                          setAutomatedMessageForm({ days_before: '', title: '', description: '', webhook_url: '' });
+                          setEditingAutomatedMessageIndex(null);
+                        }}
+                        style={{
+                          padding: '0.75rem 1.5rem',
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '1rem',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          flex: 1,
+                        }}
+                      >
+                        Update
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAutomatedMessageForm({ days_before: '', title: '', description: '', webhook_url: '' });
+                          setEditingAutomatedMessageIndex(null);
+                        }}
+                        style={{
+                          padding: '0.75rem 1.5rem',
+                          background: '#e5e7eb',
+                          color: '#374151',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '1rem',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          flex: 1,
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!automatedMessageForm.days_before || !automatedMessageForm.title || !automatedMessageForm.description || !automatedMessageForm.webhook_url) {
+                          setError('All automated message fields are required');
+                          return;
+                        }
+                        const daysBefore = parseInt(automatedMessageForm.days_before);
+                        if (isNaN(daysBefore) || daysBefore < 1) {
+                          setError('Days before must be at least 1');
+                          return;
+                        }
+                        const newMessage = {
+                          id: Date.now().toString(),
+                          days_before: daysBefore,
+                          title: automatedMessageForm.title,
+                          description: automatedMessageForm.description,
+                          webhook_url: automatedMessageForm.webhook_url,
+                          sent: false,
+                          sent_at: null,
+                        };
+                        setFormData({ ...formData, automatedMessages: [...formData.automatedMessages, newMessage] });
+                        setAutomatedMessageForm({ days_before: '', title: '', description: '', webhook_url: '' });
+                        setError('');
+                      }}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '1rem',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        width: '100%',
+                      }}
+                    >
+                      Add Automated Message
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* List of Automated Messages */}
+            {formData.automatedMessages.length > 0 && (
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>
+                  Configured Automated Messages ({formData.automatedMessages.length})
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {formData.automatedMessages.map((msg, index) => {
+                    const webhookName = savedWebhooks.find(wh => wh.webhook_url === msg.webhook_url)?.name || msg.webhook_url.substring(0, 30) + '...';
+                    return (
+                      <div
+                        key={msg.id}
+                        style={{
+                          padding: '1rem',
+                          background: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                            {msg.title}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.5rem' }}>
+                            {msg.description}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#999', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                            <span>📅 {msg.days_before} day{msg.days_before !== 1 ? 's' : ''} before</span>
+                            <span>🔗 {webhookName}</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAutomatedMessageForm({
+                                days_before: msg.days_before.toString(),
+                                title: msg.title,
+                                description: msg.description,
+                                webhook_url: msg.webhook_url,
+                              });
+                              setEditingAutomatedMessageIndex(index);
+                            }}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              background: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              cursor: 'pointer',
+                              fontWeight: '500',
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                automatedMessages: formData.automatedMessages.filter((_, i) => i !== index),
+                              });
+                            }}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              background: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              cursor: 'pointer',
+                              fontWeight: '500',
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
