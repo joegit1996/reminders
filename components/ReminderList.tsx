@@ -206,21 +206,20 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                 background: '#FFFFFF',
                 boxShadow: reminder.is_complete ? '4px 4px 0px 0px #6BCB77' : isOverdue ? '4px 4px 0px 0px #FF6B6B' : '8px 8px 0px 0px #000000',
                 opacity: reminder.is_complete ? 0.8 : 1,
-                display: 'flex',
-                flexDirection: 'column',
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr auto',
                 gap: '1rem',
                 width: '100%',
               }}
             >
-              {/* Header: Title and Action Buttons */}
+              {/* Left Column: Content */}
               <div style={{
                 display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between',
-                alignItems: isMobile ? 'stretch' : 'flex-start',
+                flexDirection: 'column',
                 gap: '1rem',
-                width: '100%',
+                minWidth: 0,
               }}>
+                {/* Title */}
                 <h3 style={{
                   fontSize: isMobile ? '1rem' : '1.25rem',
                   fontWeight: '900',
@@ -230,132 +229,12 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                   textTransform: 'uppercase',
                   lineHeight: '1.3',
                   margin: 0,
-                  flex: isMobile ? 'none' : '1 1 auto',
                 }}>
                   {reminder.text}
                 </h3>
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: isSmallMobile ? 'column' : 'row',
-                  gap: isMobile ? '0.5rem' : '0.75rem', 
-                  flexShrink: 0, 
-                  flexWrap: 'wrap',
-                  width: isMobile ? '100%' : 'auto',
-                  alignItems: isMobile ? 'stretch' : 'flex-start',
-                }}>
-                  {!reminder.is_complete && (
-                    <>
-                      <button
-                        onClick={() => onUpdateDueDate(reminder)}
-                        style={{
-                          ...neoStyles.button,
-                          ...buttonVariants.primary,
-                          padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.25rem',
-                          fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          flex: isSmallMobile ? '1' : '0 1 auto',
-                          minWidth: isMobile ? '0' : '140px',
-                          whiteSpace: 'nowrap',
-                        }}
-                        onMouseEnter={(e) => {
-                          Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translate(0, 0)';
-                          e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                        }}
-                      >
-                        {isSmallMobile ? 'UPDATE DATE' : 'UPDATE DUE DATE'}
-                      </button>
-                      <button
-                        onClick={() => onEditDelayMessage(reminder)}
-                        style={{
-                          ...neoStyles.button,
-                          background: '#A8E6CF',
-                          color: '#000000',
-                          padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.25rem',
-                          fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          flex: isSmallMobile ? '1' : '0 1 auto',
-                          minWidth: isMobile ? '0' : '140px',
-                          whiteSpace: 'nowrap',
-                        }}
-                        onMouseEnter={(e) => {
-                          Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translate(0, 0)';
-                          e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                        }}
-                      >
-                        {isSmallMobile ? 'EDIT DELAY' : 'EDIT DELAY MESSAGE'}
-                      </button>
-                      <button
-                        onClick={() => onEditAutomatedMessages(reminder)}
-                        style={{
-                          ...neoStyles.button,
-                          ...buttonVariants.warning,
-                          padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.25rem',
-                          fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          flex: isSmallMobile ? '1' : '0 1 auto',
-                          minWidth: isMobile ? '0' : '160px',
-                          whiteSpace: 'nowrap',
-                        }}
-                        onMouseEnter={(e) => {
-                          Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translate(0, 0)';
-                          e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                        }}
-                      >
-                        {isSmallMobile ? 'AUTO MSGS' : 'AUTOMATED MESSAGES'}
-                      </button>
-                      <button
-                        onClick={() => onComplete(reminder.id)}
-                        style={{
-                          ...neoStyles.button,
-                          ...buttonVariants.success,
-                          padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.25rem',
-                          fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          flex: isSmallMobile ? '1' : '0 1 auto',
-                          minWidth: isMobile ? '0' : '140px',
-                          whiteSpace: 'nowrap',
-                        }}
-                        onMouseEnter={(e) => {
-                          Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translate(0, 0)';
-                          e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                        }}
-                      >
-                        {isSmallMobile ? 'COMPLETE' : 'MARK COMPLETE'}
-                      </button>
-                    </>
-                  )}
-                  {reminder.is_complete && (
-                    <span style={{
-                      padding: '0.5rem 1rem',
-                      background: '#6BCB77',
-                      color: '#000000',
-                      border: '3px solid #000000',
-                      borderRadius: '0',
-                      boxShadow: '4px 4px 0px 0px #000000',
-                      fontSize: '0.875rem',
-                      fontWeight: '700',
-                    }}>
-                      ✓ COMPLETE
-                    </span>
-                  )}
-                </div>
-              </div>
 
-              {/* Description: Full Width */}
-              {reminder.description && (
-                <div style={{
-                  width: '100%',
-                  padding: 0,
-                  margin: 0,
-                }}>
+                {/* Description */}
+                {reminder.description && (
                   <p style={{
                     fontSize: isMobile ? '0.875rem' : '1rem',
                     color: '#000000',
@@ -364,54 +243,173 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                     fontWeight: '600',
                     margin: 0,
                     columnCount: isMobile ? 1 : 'auto',
-                    columnWidth: isMobile ? '100%' : '200px',
-                    columnGap: isMobile ? '0' : '2rem',
-                    columnFill: 'balance',
-                    width: '100%',
+                    columnWidth: '250px',
+                    columnGap: '2rem',
+                    columnFill: 'auto',
                   }}>
                     {reminder.description}
                   </p>
-                </div>
-              )}
+                )}
 
-              {/* Details: Metadata */}
+                {/* Metadata */}
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'row',
+                  flexWrap: 'wrap', 
+                  gap: isMobile ? '0.5rem' : '1rem', 
+                  fontSize: isMobile ? '0.75rem' : '0.875rem', 
+                  color: '#000000',
+                  fontWeight: '600',
+                  lineHeight: '1.6',
+                }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>
+                    📅 DUE: <strong>{format(new Date(reminder.due_date), 'MMM dd, yyyy')}</strong>
+                  </span>
+                  <span style={{ whiteSpace: 'nowrap' }}>
+                    ⏰ DAYS: <strong style={{ color: isOverdue ? '#FF6B6B' : '#6BCB77' }}>
+                      {daysRemaining >= 0 ? daysRemaining : `-${Math.abs(daysRemaining)} (OVERDUE)`}
+                    </strong>
+                  </span>
+                  <span style={{ whiteSpace: 'nowrap' }}>
+                    🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
+                  </span>
+                  {reminder.last_sent && (
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      📤 SENT: <strong>{format(new Date(reminder.last_sent), 'MMM dd HH:mm')}</strong>
+                    </span>
+                  )}
+                </div>
+
+                {/* Webhook and Automated Messages */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                  fontSize: isMobile ? '0.75rem' : '0.8rem',
+                  color: '#000000',
+                  fontWeight: '600',
+                }}>
+                  <div>
+                    🔗 WEBHOOK: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
+                  </div>
+                  {reminder.automated_messages && reminder.automated_messages.length > 0 && (
+                    <div>
+                      🤖 {reminder.automated_messages.length} AUTOMATED MESSAGE{reminder.automated_messages.length !== 1 ? 'S' : ''} CONFIGURED
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Action Buttons */}
               <div style={{ 
                 display: 'flex', 
-                flexDirection: isSmallMobile ? 'column' : 'row',
-                flexWrap: 'wrap', 
-                gap: isMobile ? '0.5rem' : '1rem', 
-                fontSize: isMobile ? '0.75rem' : isSmallMobile ? '0.8rem' : '0.875rem', 
-                color: '#000000',
-                fontWeight: '600',
-                lineHeight: '1.6',
-                width: '100%',
+                flexDirection: isMobile ? 'row' : 'column',
+                gap: '0.5rem', 
+                flexShrink: 0,
+                flexWrap: isMobile ? 'wrap' : 'nowrap',
+                justifyContent: isMobile ? 'flex-start' : 'flex-start',
               }}>
-                <span style={{ whiteSpace: 'nowrap' }}>
-                  📅 DUE: <strong>{format(new Date(reminder.due_date), 'MMM dd, yyyy')}</strong>
-                </span>
-                <span style={{ whiteSpace: 'nowrap' }}>
-                  ⏰ DAYS REMAINING: <strong style={{ color: isOverdue ? '#FF6B6B' : '#6BCB77' }}>
-                    {daysRemaining >= 0 ? daysRemaining : `-${Math.abs(daysRemaining)} (OVERDUE)`}
-                  </strong>
-                </span>
-                <span style={{ whiteSpace: 'nowrap' }}>
-                  🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
-                </span>
-                {reminder.last_sent && (
-                  <span style={{ whiteSpace: 'nowrap' }}>
-                    📤 LAST SENT: <strong>{format(new Date(reminder.last_sent), 'MMM dd, yyyy HH:mm')}</strong>
+                {!reminder.is_complete && (
+                  <>
+                    <button
+                      onClick={() => onUpdateDueDate(reminder)}
+                      style={{
+                        ...neoStyles.button,
+                        ...buttonVariants.primary,
+                        padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+                        fontSize: isMobile ? '0.7rem' : '0.875rem',
+                        minWidth: isMobile ? 'auto' : '150px',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translate(0, 0)';
+                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                      }}
+                    >
+                      {isMobile ? 'UPDATE' : 'UPDATE DUE DATE'}
+                    </button>
+                    <button
+                      onClick={() => onEditDelayMessage(reminder)}
+                      style={{
+                        ...neoStyles.button,
+                        background: '#A8E6CF',
+                        color: '#000000',
+                        padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+                        fontSize: isMobile ? '0.7rem' : '0.875rem',
+                        minWidth: isMobile ? 'auto' : '150px',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translate(0, 0)';
+                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                      }}
+                    >
+                      {isMobile ? 'DELAY' : 'EDIT DELAY MESSAGE'}
+                    </button>
+                    <button
+                      onClick={() => onEditAutomatedMessages(reminder)}
+                      style={{
+                        ...neoStyles.button,
+                        ...buttonVariants.warning,
+                        padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+                        fontSize: isMobile ? '0.7rem' : '0.875rem',
+                        minWidth: isMobile ? 'auto' : '150px',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translate(0, 0)';
+                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                      }}
+                    >
+                      {isMobile ? 'AUTO' : 'AUTOMATED MESSAGES'}
+                    </button>
+                    <button
+                      onClick={() => onComplete(reminder.id)}
+                      style={{
+                        ...neoStyles.button,
+                        ...buttonVariants.success,
+                        padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+                        fontSize: isMobile ? '0.7rem' : '0.875rem',
+                        minWidth: isMobile ? 'auto' : '150px',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translate(0, 0)';
+                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                      }}
+                    >
+                      {isMobile ? 'COMPLETE' : 'MARK COMPLETE'}
+                    </button>
+                  </>
+                )}
+                {reminder.is_complete && (
+                  <span style={{
+                    padding: '0.5rem 1rem',
+                    background: '#6BCB77',
+                    color: '#000000',
+                    border: '3px solid #000000',
+                    borderRadius: '0',
+                    boxShadow: '4px 4px 0px 0px #000000',
+                    fontSize: '0.875rem',
+                    fontWeight: '700',
+                    textAlign: 'center',
+                  }}>
+                    ✓ COMPLETE
                   </span>
                 )}
               </div>
-
-              <div style={{ fontSize: '0.8rem', color: '#000000', fontWeight: '600' }}>
-                🔗 WEBHOOK: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
-              </div>
-              {reminder.automated_messages && reminder.automated_messages.length > 0 && (
-                <div style={{ fontSize: '0.8rem', color: '#000000', marginTop: '0.25rem', fontWeight: '600' }}>
-                  🤖 {reminder.automated_messages.length} AUTOMATED MESSAGE{reminder.automated_messages.length !== 1 ? 'S' : ''} CONFIGURED
-                </div>
-              )}
             </div>
           );
         })}
