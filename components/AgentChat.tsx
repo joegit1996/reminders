@@ -420,16 +420,26 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
             </div>
             {/* Pending Actions Approval UI */}
             {msg.pendingActions && msg.pendingActions.length > 0 && (
-              <div style={{
-                marginTop: '1rem',
-                padding: '1rem',
-                background: '#FFF9C4',
-                border: '3px solid #000000',
-                borderRadius: '0',
-                boxShadow: '4px 4px 0px #000000',
-                width: '100%',
-                flexShrink: 0,
-              }}>
+              <div 
+                style={{
+                  marginTop: '1rem',
+                  padding: '1rem',
+                  background: '#FFF9C4',
+                  border: '3px solid #000000',
+                  borderRadius: '0',
+                  boxShadow: '4px 4px 0px #000000',
+                  width: '100%',
+                  flexShrink: 0,
+                  position: 'relative',
+                  zIndex: 0,
+                }}
+                onWheel={(e) => {
+                  // Don't stop propagation - allow parent to scroll
+                }}
+                onTouchMove={(e) => {
+                  // Don't stop propagation - allow parent to scroll
+                }}
+              >
                 <div style={{
                   fontWeight: '900',
                   fontSize: isMobile ? '0.875rem' : '1rem',
