@@ -112,9 +112,10 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                 justifyContent: 'space-between', 
                 alignItems: isMobile ? 'stretch' : 'flex-start', 
                 gap: '1rem',
-                marginBottom: '1rem' 
+                marginBottom: '1rem',
+                width: '100%',
               }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
                   <h3 style={{
                     fontSize: isMobile ? '1rem' : '1.25rem',
                     fontWeight: '900',
@@ -124,6 +125,8 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                     color: '#000000',
                     textTransform: 'uppercase',
                     lineHeight: '1.3',
+                    writingMode: 'horizontal-tb',
+                    textOrientation: 'mixed',
                   }}>
                     {reminder.text}
                   </h3>
