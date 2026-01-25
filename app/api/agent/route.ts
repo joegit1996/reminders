@@ -391,9 +391,10 @@ export async function POST(request: NextRequest) {
       content: message,
     });
 
-    // Use Llama 3.2 3B Instruct free model from OpenRouter (supports function calling)
-    // This is a free model that supports tool use
-    const modelName = 'meta-llama/llama-3.2-3b-instruct:free';
+    // Use Qwen 2.5 7B Instruct model from OpenRouter (supports function calling)
+    // Very low cost: $0.00000004 per prompt token, $0.0000001 per completion token
+    // This model supports tool use which is required for function calling
+    const modelName = 'qwen/qwen-2.5-7b-instruct';
 
     try {
       const completion = await openai.chat.completions.create({
