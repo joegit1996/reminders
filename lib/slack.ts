@@ -10,6 +10,12 @@ export async function sendSlackReminder(reminder: Reminder): Promise<boolean> {
     
     const daysRemaining = differenceInDays(dueDate, today);
     
+    let messageText = `*${reminder.text}*\n\n`;
+    if (reminder.description) {
+      messageText += `${reminder.description}\n\n`;
+    }
+    messageText += `📅 Due: ${format(dueDate, 'MMM dd, yyyy')}\n⏰ Days remaining: ${daysRemaining >= 0 ? daysRemaining : `-${Math.abs(daysRemaining)} (overdue)`}`;
+    
     const message = {
       text: reminder.text,
       blocks: [
@@ -17,7 +23,7 @@ export async function sendSlackReminder(reminder: Reminder): Promise<boolean> {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*${reminder.text}*\n\n📅 Due: ${format(dueDate, 'MMM dd, yyyy')}\n⏰ Days remaining: ${daysRemaining >= 0 ? daysRemaining : `-${Math.abs(daysRemaining)} (overdue)`}`,
+            text: messageText,
           },
         },
       ],

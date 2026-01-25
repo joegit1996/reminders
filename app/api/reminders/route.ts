@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { text, dueDate, periodDays, slackWebhook, delayMessage, delayWebhooks } = body;
+    const { text, description, dueDate, periodDays, slackWebhook, delayMessage, delayWebhooks } = body;
 
     // Validation
     if (!text || !dueDate || !periodDays || !slackWebhook) {
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
       dueDate,
       periodDays,
       slackWebhook,
+      description || null,
       delayMessage || null,
       delayWebhooks || []
     );

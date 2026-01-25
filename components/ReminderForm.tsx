@@ -15,6 +15,7 @@ interface ReminderFormProps {
 export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
   const [formData, setFormData] = useState({
     text: '',
+    description: '',
     dueDate: '',
     periodDays: '1',
     slackWebhook: '',
@@ -97,6 +98,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: formData.text,
+          description: formData.description || null,
           dueDate: formData.dueDate,
           periodDays: parseInt(formData.periodDays),
           slackWebhook: formData.slackWebhook,
@@ -113,6 +115,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
       // Reset form
       setFormData({
         text: '',
+        description: '',
         dueDate: '',
         periodDays: '1',
         slackWebhook: '',

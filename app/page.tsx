@@ -10,6 +10,7 @@ import UpdateDueDateModal from '@/components/UpdateDueDateModal';
 export interface Reminder {
   id: number;
   text: string;
+  description: string | null;
   due_date: string;
   period_days: number;
   slack_webhook: string;

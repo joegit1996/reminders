@@ -5,6 +5,7 @@ import { format, differenceInDays } from 'date-fns';
 interface Reminder {
   id: number;
   text: string;
+  description: string | null;
   due_date: string;
   period_days: number;
   slack_webhook: string;
@@ -69,6 +70,16 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate }:
                   }}>
                     {reminder.text}
                   </h3>
+                  {reminder.description && (
+                    <p style={{
+                      fontSize: '0.95rem',
+                      color: '#666',
+                      marginBottom: '0.5rem',
+                      lineHeight: '1.5',
+                    }}>
+                      {reminder.description}
+                    </p>
+                  )}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.9rem', color: '#666' }}>
                     <span>
                       📅 Due: <strong>{format(new Date(reminder.due_date), 'MMM dd, yyyy')}</strong>

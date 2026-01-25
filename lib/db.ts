@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 export interface Reminder {
   id: number;
   text: string;
+  description: string | null;
   due_date: string;
   period_days: number;
   slack_webhook: string;
@@ -81,6 +82,7 @@ export async function createReminder(
   dueDate: string,
   periodDays: number,
   slackWebhook: string,
+  description?: string | null,
   delayMessage?: string | null,
   delayWebhooks?: string[]
 ): Promise<Reminder> {
@@ -88,6 +90,7 @@ export async function createReminder(
     .from('reminders')
     .insert({
       text,
+      description: description || null,
       due_date: dueDate,
       period_days: periodDays,
       slack_webhook: slackWebhook,
