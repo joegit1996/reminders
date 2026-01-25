@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAllReminders, getReminderById, createReminder, markReminderComplete, updateReminderDueDate } from '@/lib/db';
 
-// Initialize DeepSeek (OpenAI-compatible API)
+// Initialize OpenRouter (OpenAI-compatible API)
 const openai = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY || '',
-  baseURL: 'https://api.deepseek.com',
+  apiKey: process.env.OPENROUTER_API_KEY || '',
+  baseURL: 'https://openrouter.ai/api/v1',
+  defaultHeaders: {
+    'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
+    'X-Title': 'Reminders App',
+  },
 });
 
-// Function definitions for DeepSeek (OpenAI-compatible format)
+// Function definitions for OpenRouter/DeepSeek (OpenAI-compatible format)
 const functionDefinitions = [
   {
     name: 'create_reminder',
@@ -348,9 +352,9 @@ async function executeFunction(name: string, args: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.DEEPSEEK_API_KEY) {
+    if (!process.env.OPENROUTER_API_KEY) {
       return NextResponse.json(
-        { error: 'DEEPSEEK_API_KEY not configured' },
+        { error: 'OPENROUTER_API_KEY not configured' },
         { status: 500 }
       );
     }
@@ -387,8 +391,8 @@ export async function POST(request: NextRequest) {
       content: message,
     });
 
-    // Try models in order: deepseek-chat -> deepseek-coder -> deepseek-reasoner
-    const modelOptions = ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'];
+    // Use DeepSeek R1T Chimera free model from OpenRouter
+    const modelName = 'tngtech/deepseek-r1t-chimera:free';
     let lastError: any = null;
 
     for (const modelName of modelOptions) {
