@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
 
 interface Reminder {
   id: number;
@@ -100,7 +101,7 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
+        background: neoStyles.modalOverlay.background,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -111,28 +112,29 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
     >
       <div
         style={{
-          background: 'white',
-          borderRadius: '12px',
+          background: neoStyles.modalContent.background,
+          border: neoStyles.modalContent.border,
+          borderRadius: neoStyles.modalContent.borderRadius,
+          boxShadow: neoStyles.modalContent.boxShadow,
           padding: isMobile ? '1.5rem' : '2rem',
           maxWidth: '600px',
           width: '100%',
           maxHeight: '90vh',
           overflow: 'auto',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
-          Edit Delay Notification Settings
+        <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '900', marginBottom: '1rem', color: '#000000', textTransform: 'uppercase' }}>
+          EDIT DELAY NOTIFICATION SETTINGS
         </h2>
-        <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+        <p style={{ color: '#000000', marginBottom: '1.5rem', fontWeight: '700' }}>
           <strong>{reminder.text}</strong>
         </p>
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="delayMessage" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-              Delay Message Template
+            <label htmlFor="delayMessage" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+              DELAY MESSAGE TEMPLATE
             </label>
             <textarea
               id="delayMessage"
@@ -141,43 +143,47 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
               placeholder='e.g., Unfortunately the FKAutoparts release will be delayed'
               rows={3}
               style={{
+                ...neoStyles.input,
                 width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '1rem',
                 fontFamily: 'inherit',
                 resize: 'vertical',
               }}
+              onFocus={(e) => {
+                e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+              }}
+              onBlur={(e) => {
+                e.target.style.boxShadow = 'none';
+              }}
             />
-            <small style={{ color: '#666', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>
+            <small style={{ color: '#000000', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem', fontWeight: '600' }}>
               The new due date will be automatically appended to your message when sent
             </small>
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-              Delay Notification Webhooks (select multiple)
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+              DELAY NOTIFICATION WEBHOOKS (SELECT MULTIPLE)
             </label>
-            <small style={{ color: '#666', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>
+            <small style={{ color: '#000000', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
               These webhooks will ONLY receive delay messages when the due date is updated. They are completely separate from the reminder webhook.
             </small>
             {savedWebhooks.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', background: '#f9fafb', borderRadius: '6px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', background: '#FFFFFF', border: '3px solid #000000', borderRadius: '0', boxShadow: '4px 4px 0px 0px #000000' }}>
                 {savedWebhooks.map((wh) => (
-                  <label key={wh.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <label key={wh.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '600', color: '#000000' }}>
                     <input
                       type="checkbox"
                       checked={delayWebhooks.includes(wh.webhook_url)}
                       onChange={() => handleDelayWebhookToggle(wh.webhook_url)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     <span>{wh.name}</span>
                   </label>
                 ))}
               </div>
             ) : (
-              <p style={{ color: '#666', fontSize: '0.875rem', padding: '1rem', background: '#f9fafb', borderRadius: '6px' }}>
-                No saved webhooks. Go to <a href="/webhooks" style={{ color: '#3b82f6' }}>Manage Webhooks</a> to add some.
+              <p style={{ color: '#000000', fontSize: '0.875rem', padding: '1rem', background: '#FFFFFF', border: '3px solid #000000', borderRadius: '0', boxShadow: '4px 4px 0px 0px #000000', fontWeight: '600' }}>
+                No saved webhooks. Go to <a href="/webhooks" style={{ color: '#4ECDC4', fontWeight: '700' }}>Manage Webhooks</a> to add some.
               </p>
             )}
           </div>
@@ -185,11 +191,13 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
           {error && (
             <div style={{
               padding: '0.75rem',
-              background: '#fee',
-              border: '1px solid #fcc',
-              borderRadius: '6px',
-              color: '#c33',
+              background: '#FF6B6B',
+              border: '3px solid #000000',
+              borderRadius: '0',
+              boxShadow: '4px 4px 0px 0px #000000',
+              color: '#000000',
               marginBottom: '1rem',
+              fontWeight: '700',
             }}>
               {error}
             </div>
@@ -205,35 +213,45 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
               type="button"
               onClick={onClose}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.neutral,
                 padding: '0.75rem 1.5rem',
-                background: '#e5e7eb',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '6px',
                 fontSize: isMobile ? '0.9rem' : '1rem',
-                cursor: 'pointer',
-                fontWeight: '500',
                 width: isMobile ? '100%' : 'auto',
               }}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+              }}
             >
-              Cancel
+              CANCEL
             </button>
             <button
               type="submit"
               disabled={loading}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.primary,
                 padding: '0.75rem 1.5rem',
-                background: loading ? '#ccc' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
                 fontSize: isMobile ? '0.9rem' : '1rem',
+                opacity: loading ? 0.6 : 1,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight: '500',
                 width: isMobile ? '100%' : 'auto',
               }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+              }}
             >
-              {loading ? 'Saving...' : 'Save'}
+              {loading ? 'SAVING...' : 'SAVE'}
             </button>
           </div>
         </form>

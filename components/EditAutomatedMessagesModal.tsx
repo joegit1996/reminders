@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
 
 interface AutomatedMessage {
   id: string;
@@ -194,7 +195,7 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
+        background: neoStyles.modalOverlay.background,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -205,21 +206,22 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
     >
       <div
         style={{
-          background: 'white',
-          borderRadius: '12px',
+          background: neoStyles.modalContent.background,
+          border: neoStyles.modalContent.border,
+          borderRadius: neoStyles.modalContent.borderRadius,
+          boxShadow: neoStyles.modalContent.boxShadow,
           padding: isMobile ? '1.5rem' : '2rem',
           maxWidth: '800px',
           width: '100%',
           maxHeight: '90vh',
           overflow: 'auto',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
-          Edit Automated Messages
+        <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '900', marginBottom: '1rem', color: '#000000', textTransform: 'uppercase' }}>
+          EDIT AUTOMATED MESSAGES
         </h2>
-        <p style={{ color: '#666', marginBottom: '1.5rem', fontSize: isMobile ? '0.875rem' : '1rem' }}>
+        <p style={{ color: '#000000', marginBottom: '1.5rem', fontSize: isMobile ? '0.875rem' : '1rem', fontWeight: '700' }}>
           <strong>{reminder.text}</strong>
         </p>
 
