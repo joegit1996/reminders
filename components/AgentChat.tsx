@@ -45,12 +45,22 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
     setLoading(true);
 
     try {
+      // Filter out the initial welcome message when sending to API
+      // Gemini requires the first message to be from 'user'
+      const conversationHistory = messages.filter((msg, index) => {
+        // Skip the first message if it's the welcome message from assistant
+        if (index === 0 && msg.role === 'assistant') {
+          return false;
+        }
+        return true;
+      });
+
       const response = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage,
-          conversationHistory: messages,
+          conversationHistory: conversationHistory,
         }),
       });
 

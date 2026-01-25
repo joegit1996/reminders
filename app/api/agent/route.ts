@@ -371,11 +371,25 @@ export async function POST(request: NextRequest) {
     });
 
     // Build conversation history
+    // Filter out the initial welcome message and ensure first message is from user
+    const filteredHistory = conversationHistory.filter((msg: any, index: number) => {
+      // Skip the first message if it's from assistant (welcome message)
+      if (index === 0 && msg.role === 'assistant') {
+        return false;
+      }
+      return true;
+    });
+
+    // Ensure we have at least one user message, or start fresh
+    const history = filteredHistory.length > 0 && filteredHistory[0].role === 'user'
+      ? filteredHistory.map((msg: any) => ({
+          role: msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.content }],
+        }))
+      : [];
+
     const chat = model.startChat({
-      history: conversationHistory.map((msg: any) => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }],
-      })),
+      history: history,
     });
 
     // Send the user message
