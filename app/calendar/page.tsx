@@ -32,6 +32,8 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedWebhookFilter, setSelectedWebhookFilter] = useState<string>('all');
+  const [hoveredReminder, setHoveredReminder] = useState<{ reminder: Reminder; x: number; y: number } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -69,7 +71,15 @@ export default function CalendarPage() {
     return reminders.filter(reminder => {
       if (reminder.is_complete) return false;
       const dueDate = new Date(reminder.due_date);
-      return isSameDay(dueDate, date);
+      const matchesDate = isSameDay(dueDate, date);
+      
+      // Apply webhook filter
+      if (selectedWebhookFilter !== 'all') {
+        const matchesWebhook = reminder.slack_webhook === selectedWebhookFilter;
+        return matchesDate && matchesWebhook;
+      }
+      
+      return matchesDate;
     });
   };
 
@@ -168,7 +178,7 @@ export default function CalendarPage() {
           flexWrap: 'wrap',
           gap: '1rem',
         }}>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={goToPreviousMonth}
               style={{
@@ -211,13 +221,44 @@ export default function CalendarPage() {
               →
             </button>
           </div>
-          <h2 style={{
-            fontSize: isMobile ? '1.25rem' : '1.5rem',
-            fontWeight: '600',
-            margin: 0,
-          }}>
-            {format(currentDate, 'MMMM yyyy')}
-          </h2>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <h2 style={{
+              fontSize: isMobile ? '1.25rem' : '1.5rem',
+              fontWeight: '600',
+              margin: 0,
+            }}>
+              {format(currentDate, 'MMMM yyyy')}
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label htmlFor="webhookFilter" style={{
+                fontSize: isMobile ? '0.875rem' : '1rem',
+                fontWeight: '500',
+                color: '#374151',
+              }}>
+                Filter:
+              </label>
+              <select
+                id="webhookFilter"
+                value={selectedWebhookFilter}
+                onChange={(e) => setSelectedWebhookFilter(e.target.value)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: isMobile ? '0.875rem' : '1rem',
+                  background: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="all">All Webhooks</option>
+                {savedWebhooks.map(webhook => (
+                  <option key={webhook.id} value={webhook.webhook_url}>
+                    {webhook.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Calendar Grid */}
@@ -321,6 +362,61 @@ export default function CalendarPage() {
           })}
         </div>
 
+        {/* Hover Tooltip */}
+        {hoveredReminder && (
+          <div
+            style={{
+              position: 'fixed',
+              left: `${hoveredReminder.x + 10}px`,
+              top: `${hoveredReminder.y + 10}px`,
+              background: 'white',
+              padding: '1rem',
+              borderRadius: '8px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+              border: '1px solid #e5e7eb',
+              zIndex: 1000,
+              maxWidth: '300px',
+              pointerEvents: 'none',
+            }}
+          >
+            <div style={{
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              marginBottom: '0.5rem',
+              color: '#374151',
+            }}>
+              {hoveredReminder.reminder.text}
+            </div>
+            {hoveredReminder.reminder.description && (
+              <div style={{
+                fontSize: '0.75rem',
+                color: '#666',
+                marginBottom: '0.5rem',
+                lineHeight: '1.4',
+              }}>
+                {hoveredReminder.reminder.description}
+              </div>
+            )}
+            <div style={{
+              fontSize: '0.75rem',
+              color: '#666',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.25rem',
+            }}>
+              <div>
+                📅 Due: <strong>{format(new Date(hoveredReminder.reminder.due_date), 'MMM dd, yyyy')}</strong>
+              </div>
+              <div>
+                🔄 Period: <strong>{hoveredReminder.reminder.period_days} day{hoveredReminder.reminder.period_days !== 1 ? 's' : ''}</strong>
+              </div>
+              <div>
+                🔗 Webhook: <strong>{getWebhookName(hoveredReminder.reminder.slack_webhook)}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Selected Date Details */}
         {selectedDate && (
           <div style={{
@@ -338,7 +434,7 @@ export default function CalendarPage() {
               Reminders for {format(selectedDate, 'MMMM dd, yyyy')}
             </h3>
             {getRemindersForDate(selectedDate).length === 0 ? (
-              <p style={{ color: '#666' }}>No reminders for this date</p>
+              <p style={{ color: '#666' }}>No reminders for this date{selectedWebhookFilter !== 'all' ? ` with selected webhook filter` : ''}</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {getRemindersForDate(selectedDate).map(reminder => (
