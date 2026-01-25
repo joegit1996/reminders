@@ -531,13 +531,18 @@ export async function POST(request: NextRequest) {
 
         // If there are write operations, require approval
         if (writeOperations.length > 0) {
-          const pendingActions = writeOperations.map((tc: any) => ({
-            id: tc.id,
-            name: tc.type === 'function' ? tc.function?.name : '',
-            args: JSON.parse((tc.type === 'function' ? tc.function?.arguments : '{}') || '{}'),
-            description: functionDefinitions.find(fn => fn.name === (tc.type === 'function' ? tc.function?.name : ''))?.description || '',
-            toolCall: tc, // Store full tool call for execution
-          }));
+          const pendingActions = writeOperations.map((tc: any) => {
+            const funcName = tc.type === 'function' ? tc.function?.name : '';
+            const funcDef = functionDefinitions.find(fn => fn.name === funcName);
+            return {
+              id: tc.id,
+              name: funcName,
+              args: JSON.parse((tc.type === 'function' ? tc.function?.arguments : '{}') || '{}'),
+              description: funcDef?.description || '',
+              parameters: funcDef?.parameters || {}, // Include parameter schema for form generation
+              toolCall: tc, // Store full tool call for execution
+            };
+          });
 
           // Execute read operations immediately (no approval needed)
           const readResults = [];

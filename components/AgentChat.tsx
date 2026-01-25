@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
+import ActionFormFields from './ActionFormFields';
 
 interface PendingAction {
   id: string;
@@ -10,6 +11,7 @@ interface PendingAction {
   args: any;
   description: string;
   toolCall: any; // Store the full tool call for execution
+  parameters?: any; // Store parameter schema for form generation
 }
 
 interface Message {
@@ -24,6 +26,126 @@ interface Message {
 
 interface AgentChatProps {
   onReminderUpdated?: () => void;
+}
+
+// Component for pending actions form
+function PendingActionsForm({
+  pendingActions,
+  messageIndex,
+  onApprove,
+  onReject,
+  loading,
+  isMobile,
+}: {
+  pendingActions: PendingAction[];
+  messageIndex: number;
+  onApprove: (actions: PendingAction[], idx: number, editedArgs?: any[]) => void;
+  onReject: (idx: number) => void;
+  loading: boolean;
+  isMobile: boolean;
+}) {
+  const [editedArgs, setEditedArgs] = useState<any[]>(pendingActions.map(a => ({ ...a.args })));
+
+  const handleArgChange = (actionIdx: number, newArgs: any) => {
+    const updated = [...editedArgs];
+    updated[actionIdx] = newArgs;
+    setEditedArgs(updated);
+  };
+
+  return (
+    <div style={{
+      marginTop: '1rem',
+      padding: '1rem',
+      background: '#FFF9C4',
+      border: '3px solid #000000',
+      borderRadius: '0',
+      boxShadow: '4px 4px 0px 0px #000000',
+      width: '100%',
+    }}>
+      <div style={{
+        fontWeight: '900',
+        fontSize: isMobile ? '0.875rem' : '1rem',
+        marginBottom: '0.75rem',
+        textTransform: 'uppercase',
+      }}>
+        ⚠️ APPROVAL REQUIRED
+      </div>
+      {pendingActions.map((action, actionIdx) => (
+        <div key={actionIdx} style={{
+          marginBottom: '0.75rem',
+          padding: '0.75rem',
+          background: '#FFFFFF',
+          border: '2px solid #000000',
+          borderRadius: '0',
+        }}>
+          <div style={{ fontWeight: '700', marginBottom: '0.5rem', fontSize: isMobile ? '0.875rem' : '1rem' }}>
+            {action.name}
+          </div>
+          {action.description && (
+            <div style={{ fontSize: isMobile ? '0.75rem' : '0.875rem', marginBottom: '0.5rem', color: '#666' }}>
+              {action.description}
+            </div>
+          )}
+          <div style={{ marginTop: '0.75rem' }}>
+            <ActionFormFields
+              action={{ ...action, args: editedArgs[actionIdx] }}
+              onArgsChange={(newArgs) => handleArgChange(actionIdx, newArgs)}
+            />
+          </div>
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+        <button
+          onClick={() => onApprove(pendingActions, messageIndex, editedArgs)}
+          disabled={loading}
+          style={{
+            ...neoStyles.button,
+            ...buttonVariants.success,
+            padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.5rem',
+            fontSize: isMobile ? '0.875rem' : '1rem',
+            flex: 1,
+            opacity: loading ? 0.6 : 1,
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            if (!loading) {
+              Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translate(0, 0)';
+            e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+          }}
+        >
+          ✓ APPROVE
+        </button>
+        <button
+          onClick={() => onReject(messageIndex)}
+          disabled={loading}
+          style={{
+            ...neoStyles.button,
+            ...buttonVariants.danger,
+            padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.5rem',
+            fontSize: isMobile ? '0.875rem' : '1rem',
+            flex: 1,
+            opacity: loading ? 0.6 : 1,
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            if (!loading) {
+              Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translate(0, 0)';
+            e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+          }}
+        >
+          ✗ REJECT
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
@@ -47,7 +169,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
     scrollToBottom();
   }, [messages]);
 
-  const handleApproveActions = async (pendingActions: PendingAction[], messageIndex: number) => {
+  const handleApproveActions = async (pendingActions: PendingAction[], messageIndex: number, editedArgs?: any[]) => {
     setLoading(true);
     try {
       // Find the message with pending actions
@@ -66,7 +188,27 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         return true;
       });
 
-      // Send approval with the stored response message
+      // If editedArgs provided, update the stored response message with edited values
+      let responseMessageToSend = messageWithActions.responseMessage;
+      if (editedArgs && editedArgs.length > 0) {
+        responseMessageToSend = {
+          ...responseMessageToSend,
+          tool_calls: responseMessageToSend.tool_calls.map((tc: any, idx: number) => {
+            if (idx < editedArgs.length && editedArgs[idx]) {
+              return {
+                ...tc,
+                function: {
+                  ...tc.function,
+                  arguments: JSON.stringify(editedArgs[idx]),
+                },
+              };
+            }
+            return tc;
+          }),
+        };
+      }
+
+      // Send approval with the stored response message (potentially edited)
       const response = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,7 +217,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           conversationHistory: conversationHistory,
           approveActions: true,
           pendingActionId: pendingActions[0]?.id,
-          responseMessage: messageWithActions.responseMessage, // Send the original response message
+          responseMessage: responseMessageToSend, // Send the (potentially edited) response message
         }),
       });
 
