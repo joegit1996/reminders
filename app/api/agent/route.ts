@@ -393,82 +393,75 @@ export async function POST(request: NextRequest) {
 
     // Use DeepSeek R1T Chimera free model from OpenRouter
     const modelName = 'tngtech/deepseek-r1t-chimera:free';
-    let lastError: any = null;
 
-    for (const modelName of modelOptions) {
-      try {
-        const completion = await openai.chat.completions.create({
-          model: modelName,
-          messages: messages as any,
-          tools: functionDefinitions.map(fn => ({
-            type: 'function',
-            function: {
-              name: fn.name,
-              description: fn.description,
-              parameters: fn.parameters,
-            },
-          })),
-          tool_choice: 'auto',
-        });
+    try {
+      const completion = await openai.chat.completions.create({
+        model: modelName,
+        messages: messages as any,
+        tools: functionDefinitions.map(fn => ({
+          type: 'function',
+          function: {
+            name: fn.name,
+            description: fn.description,
+            parameters: fn.parameters,
+          },
+        })),
+        tool_choice: 'auto',
+      });
 
-        const responseMessage = completion.choices[0].message;
+      const responseMessage = completion.choices[0].message;
 
-        // Check if the model wants to call a function
-        if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-          const functionResults = [];
-          const functionCallsData: Array<{ name: string; args: any }> = [];
-          
-          for (const toolCall of responseMessage.tool_calls) {
-            if (toolCall.type === 'function') {
-              const functionName = toolCall.function.name;
-              const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
-              
-              // Execute the function
-              const functionResult = await executeFunction(functionName, functionArgs);
-              functionResults.push({
-                role: 'tool' as const,
-                tool_call_id: toolCall.id,
-                content: JSON.stringify(functionResult),
-              });
-              
-              functionCallsData.push({
-                name: functionName,
-                args: functionArgs,
-              });
-            }
+      // Check if the model wants to call a function
+      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+        const functionResults = [];
+        const functionCallsData: Array<{ name: string; args: any }> = [];
+        
+        for (const toolCall of responseMessage.tool_calls) {
+          if (toolCall.type === 'function') {
+            const functionName = toolCall.function.name;
+            const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+            
+            // Execute the function
+            const functionResult = await executeFunction(functionName, functionArgs);
+            functionResults.push({
+              role: 'tool' as const,
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(functionResult),
+            });
+            
+            functionCallsData.push({
+              name: functionName,
+              args: functionArgs,
+            });
           }
-
-          // Add function results to messages and get final response
-          const finalMessages = [
-            ...messages,
-            responseMessage,
-            ...functionResults,
-          ];
-
-          const finalCompletion = await openai.chat.completions.create({
-            model: modelName,
-            messages: finalMessages as any,
-          });
-
-          return NextResponse.json({
-            response: finalCompletion.choices[0].message.content || '',
-            functionCalls: functionCallsData,
-          });
         }
 
-        // No function calls, just return the text response
-        return NextResponse.json({
-          response: responseMessage.content || '',
-        });
-      } catch (error: any) {
-        lastError = error;
-        // Try next model
-        continue;
-      }
-    }
+        // Add function results to messages and get final response
+        const finalMessages = [
+          ...messages,
+          responseMessage,
+          ...functionResults,
+        ];
 
-    // If all models failed, throw the last error
-    throw lastError || new Error('All models failed');
+        const finalCompletion = await openai.chat.completions.create({
+          model: modelName,
+          messages: finalMessages as any,
+        });
+
+        return NextResponse.json({
+          response: finalCompletion.choices[0].message.content || '',
+          functionCalls: functionCallsData,
+        });
+      }
+
+      // No function calls, just return the text response
+      return NextResponse.json({
+        response: responseMessage.content || '',
+      });
+    } catch (error: any) {
+      console.error('Error calling OpenRouter:', error);
+      throw error;
+    }
   } catch (error) {
     console.error('Error in agent:', error);
     return NextResponse.json(
