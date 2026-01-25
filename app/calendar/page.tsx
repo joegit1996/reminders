@@ -345,7 +345,10 @@ export default function CalendarPage() {
               <div
                 key={idx}
                 data-calendar-cell
-                onClick={() => setSelectedDate(day)}
+                onClick={() => {
+                  setSelectedDate(day);
+                  setHoveredReminder(null); // Hide tooltip when clicking
+                }}
                 style={{
                   minHeight: isMobile ? '50px' : '100px',
                   padding: isMobile ? '0.25rem' : '0.5rem',
@@ -437,8 +440,8 @@ export default function CalendarPage() {
           })}
         </div>
 
-        {/* Hover Tooltip */}
-        {hoveredReminder && (
+        {/* Hover Tooltip - Only show when no date is selected */}
+        {hoveredReminder && !selectedDate && (
           <div
             style={{
               position: 'fixed',
