@@ -363,13 +363,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize the model with function calling
-    // Using gemini-1.5-flash for better free tier availability and performance
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
-      tools: [{ 
-        functionDeclarations: functionDefinitions as any 
-      }],
-    });
+    // Try latest models in order: gemini-2.0-flash-exp -> gemini-1.5-flash
+    // Note: Gemini 3 Flash doesn't exist yet (as of 2025), using latest available Flash models
+    let model;
+    const modelOptions = ['gemini-2.0-flash-exp', 'gemini-1.5-flash'];
+    
+    for (const modelName of modelOptions) {
+      try {
+        model = genAI.getGenerativeModel({ 
+          model: modelName,
+          tools: [{ 
+            functionDeclarations: functionDefinitions as any 
+          }],
+        });
+        break; // Success, use this model
+      } catch (error) {
+        // Try next model
+        continue;
+      }
+    }
+    
+    // Final fallback if all fail
+    if (!model) {
+      model = genAI.getGenerativeModel({ 
+        model: 'gemini-1.5-flash',
+        tools: [{ 
+          functionDeclarations: functionDefinitions as any 
+        }],
+      });
+    }
 
     // Build conversation history
     // Filter out the initial welcome message and ensure first message is from user
