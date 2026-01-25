@@ -156,6 +156,28 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
       </div>
 
       <div>
+        <label htmlFor="description" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+          Description (Optional)
+        </label>
+        <textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Add additional details about this reminder..."
+          rows={3}
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            border: '1px solid #ddd',
+            borderRadius: '6px',
+            fontSize: '1rem',
+            fontFamily: 'inherit',
+            resize: 'vertical',
+          }}
+        />
+      </div>
+
+      <div>
         <label htmlFor="dueDate" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
           Due Date *
         </label>
