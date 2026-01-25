@@ -238,7 +238,8 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           ...updated[messageIndex],
           pendingActions: undefined,
           requiresApproval: false,
-          content: data.response,
+          responseMessage: undefined, // Clear response message
+          content: data.response || updated[messageIndex].content + '\n\n✅ Actions approved and executed.',
           functionCalls: data.functionCalls,
           approved: true,
         };
@@ -266,6 +267,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         ...updated[messageIndex],
         pendingActions: undefined,
         requiresApproval: false,
+        responseMessage: undefined,
         content: updated[messageIndex].content + '\n\n❌ Actions rejected by user.',
       };
       return updated;
@@ -346,18 +348,9 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
       ...neoStyles.card,
       display: 'flex',
       flexDirection: 'column',
-      height: isMobile ? '500px' : '600px',
-      maxHeight: '90vh',
+      height: isMobile ? '600px' : '800px',
+      maxHeight: '95vh',
     }}>
-      <h2 style={{
-        fontSize: isMobile ? '1.25rem' : '1.5rem',
-        fontWeight: '900',
-        marginBottom: '1rem',
-        color: '#000000',
-        textTransform: 'uppercase',
-      }}>
-        🤖 AI ASSISTANT
-      </h2>
 
       {/* Messages */}
       <div 
