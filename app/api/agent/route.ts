@@ -284,7 +284,11 @@ async function executeFunction(name: string, args: any) {
       }
       
       if (args.webhookName) {
-        const webhooksRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks`);
+        const webhooksRes = await fetch(`${baseUrl}/api/webhooks`);
+        if (!webhooksRes.ok) {
+          console.error('Failed to fetch webhooks for search:', webhooksRes.status);
+          throw new Error(`Failed to fetch webhooks: ${webhooksRes.status}`);
+        }
         const webhooks = await webhooksRes.json();
         const webhook = webhooks.find((w: any) => w.name.toLowerCase().includes(args.webhookName.toLowerCase()));
         if (webhook) {
@@ -295,7 +299,7 @@ async function executeFunction(name: string, args: any) {
       return { reminders: filtered };
     
     case 'delete_reminder':
-      const deleteResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/reminders/${args.id}`, {
+      const deleteResponse = await fetch(`${baseUrl}/api/reminders/${args.id}`, {
         method: 'DELETE',
       });
       if (!deleteResponse.ok) {
@@ -305,7 +309,7 @@ async function executeFunction(name: string, args: any) {
       return { success: true, message: 'Reminder deleted successfully' };
     
     case 'update_delay_config':
-      const delayConfigResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/reminders/${args.id}`, {
+      const delayConfigResponse = await fetch(`${baseUrl}/api/reminders/${args.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -333,7 +337,7 @@ async function executeFunction(name: string, args: any) {
         sent_at: msg.sent_at || null,
       }));
       
-      const automatedMessagesResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/reminders/${args.id}`, {
+      const automatedMessagesResponse = await fetch(`${baseUrl}/api/reminders/${args.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
