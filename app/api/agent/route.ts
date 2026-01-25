@@ -452,10 +452,22 @@ export async function POST(request: NextRequest) {
       content: message,
     });
 
+    // System message to guide the AI
+    const systemMessage = {
+      role: 'system' as const,
+      content: `You are a helpful AI assistant for managing reminders. When creating reminders:
+- Always provide concise, relevant descriptions that directly relate to the user's request
+- Keep descriptions brief and focused on the task at hand
+- Avoid generic or verbose descriptions
+- Match the tone and context of the user's prompt
+
+Example: If user says "remind me to review the proposal", the description should be something like "Review proposal" or "Proposal review", not "This is a reminder to review the proposal document that was mentioned by the user".`,
+    };
+
     try {
       const completion = await openai.chat.completions.create({
         model: modelName,
-        messages: messages as any,
+        messages: [systemMessage, ...messages] as any,
         tools: functionDefinitions.map(fn => ({
           type: 'function',
           function: {
