@@ -123,10 +123,10 @@ export default function Home() {
       <div style={{
         background: '#FFFFFF',
         borderRadius: '0',
-        padding: isMobile ? '1rem' : '2rem',
+        padding: isMobile ? '1.5rem' : '2rem',
         border: '4px solid #000000',
         boxShadow: '8px 8px 0px 0px #000000',
-        marginBottom: '2rem',
+        marginBottom: isMobile ? '1.5rem' : '2rem',
       }}>
         <div style={{ 
           display: 'flex', 
@@ -214,7 +214,7 @@ export default function Home() {
       <div style={{
         background: '#FFFFFF',
         borderRadius: '0',
-        padding: isMobile ? '1rem' : '2rem',
+        padding: isMobile ? '1.5rem' : '2rem',
         border: '4px solid #000000',
         boxShadow: '8px 8px 0px 0px #000000',
       }}>

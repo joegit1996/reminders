@@ -131,14 +131,14 @@ export default function CalendarPage() {
   }
 
   return (
-    <main style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '2rem', width: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
+    <main style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '1rem' : '2rem', width: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
       <div style={{
         background: neoStyles.card.background,
         border: neoStyles.card.border,
         borderRadius: neoStyles.card.borderRadius,
         boxShadow: neoStyles.card.boxShadow,
-        padding: isMobile ? '1rem' : '2rem',
-        marginBottom: '2rem',
+        padding: isMobile ? '1.5rem' : '2rem',
+        marginBottom: isMobile ? '1.5rem' : '2rem',
         width: '100%',
         maxWidth: '100%',
         overflowX: 'hidden',

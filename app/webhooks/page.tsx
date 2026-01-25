@@ -122,8 +122,12 @@ export default function WebhooksPage() {
   return (
     <main style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '1rem' : '2rem', width: '100%' }}>
       <div style={{
-        ...neoStyles.card,
-        marginBottom: '2rem',
+        background: neoStyles.card.background,
+        border: neoStyles.card.border,
+        borderRadius: neoStyles.card.borderRadius,
+        boxShadow: neoStyles.card.boxShadow,
+        padding: isMobile ? '1.5rem' : '2rem',
+        marginBottom: isMobile ? '1.5rem' : '2rem',
       }}>
         <div style={{ 
           display: 'flex', 
