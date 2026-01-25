@@ -121,10 +121,11 @@ export default function Home() {
       width: '100%',
     }}>
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
+        background: '#FFFFFF',
+        borderRadius: '0',
         padding: isMobile ? '1rem' : '2rem',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+        border: '4px solid #000000',
+        boxShadow: '8px 8px 0px 0px #000000',
         marginBottom: '2rem',
       }}>
         <div style={{ 
@@ -138,61 +139,84 @@ export default function Home() {
           <div style={{ flex: 1 }}>
             <h1 style={{
               fontSize: isMobile ? '1.75rem' : '2.5rem',
-              fontWeight: 'bold',
+              fontWeight: '900',
               marginBottom: '0.5rem',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: '#000000',
+              textTransform: 'uppercase',
+              letterSpacing: '-0.02em',
             }}>
-              📋 Reminders
+              📋 REMINDERS
             </h1>
-            <p style={{ color: '#666', fontSize: isMobile ? '0.875rem' : '1rem' }}>
+            <p style={{ color: '#000000', fontSize: isMobile ? '0.875rem' : '1rem', fontWeight: '600' }}>
               Manage your Slack reminders and never miss a deadline
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <Link
-              href="/calendar"
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: '#e5e7eb',
-                color: '#374151',
-                textDecoration: 'none',
-                borderRadius: '6px',
-                fontWeight: '500',
-                fontSize: '0.9rem',
-                whiteSpace: 'nowrap',
-                textAlign: 'center',
-              }}
-            >
-              📅 Calendar
-            </Link>
-            <Link
-              href="/webhooks"
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: '#e5e7eb',
-                color: '#374151',
-                textDecoration: 'none',
-                borderRadius: '6px',
-                fontWeight: '500',
-                fontSize: '0.9rem',
-                whiteSpace: 'nowrap',
-                textAlign: 'center',
-              }}
-            >
-              🔗 Manage Webhooks
-            </Link>
+          <Link
+            href="/calendar"
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#4ECDC4',
+              color: '#000000',
+              textDecoration: 'none',
+              borderRadius: '0',
+              border: '3px solid #000000',
+              fontWeight: '700',
+              fontSize: '0.9rem',
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              boxShadow: '4px 4px 0px 0px #000000',
+              transition: 'all 0.1s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translate(2px, 2px)';
+              e.currentTarget.style.boxShadow = '2px 2px 0px 0px #000000';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translate(0, 0)';
+              e.currentTarget.style.boxShadow = '4px 4px 0px 0px #000000';
+            }}
+          >
+            📅 CALENDAR
+          </Link>
+          <Link
+            href="/webhooks"
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#FF6B6B',
+              color: '#000000',
+              textDecoration: 'none',
+              borderRadius: '0',
+              border: '3px solid #000000',
+              fontWeight: '700',
+              fontSize: '0.9rem',
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              boxShadow: '4px 4px 0px 0px #000000',
+              transition: 'all 0.1s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translate(2px, 2px)';
+              e.currentTarget.style.boxShadow = '2px 2px 0px 0px #000000';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translate(0, 0)';
+              e.currentTarget.style.boxShadow = '4px 4px 0px 0px #000000';
+            }}
+          >
+            🔗 WEBHOOKS
+          </Link>
           </div>
         </div>
         <ReminderForm onReminderCreated={handleReminderCreated} />
       </div>
 
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
+        background: '#FFFFFF',
+        borderRadius: '0',
         padding: isMobile ? '1rem' : '2rem',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+        border: '4px solid #000000',
+        boxShadow: '8px 8px 0px 0px #000000',
       }}>
         {loading ? (
           <p style={{ textAlign: 'center', color: '#666' }}>Loading reminders...</p>
