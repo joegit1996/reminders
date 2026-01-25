@@ -16,7 +16,7 @@ const openai = new OpenAI({
 const functionDefinitions = [
   {
     name: 'create_reminder',
-    description: 'Create a new reminder with text, due date, period, and webhook',
+    description: 'Create a new reminder. CRITICAL: Always call list_webhooks first, then match webhook names from user prompt.',
     parameters: {
       type: 'object',
       properties: {
@@ -38,7 +38,7 @@ const functionDefinitions = [
         },
         slackWebhook: {
           type: 'string',
-          description: 'Slack webhook URL (must start with https://hooks.slack.com/)',
+          description: 'Slack webhook URL from list_webhooks. Match name to user reference (e.g., "for youssef" = webhook named "youssef").',
         },
         delayMessage: {
           type: 'string',
@@ -458,13 +458,24 @@ export async function POST(request: NextRequest) {
     // System message to guide the AI
     const systemMessage = {
       role: 'system' as const,
-      content: `You are a helpful AI assistant for managing reminders. When creating reminders:
-- Always provide concise, relevant descriptions that directly relate to the user's request
-- Keep descriptions brief and focused on the task at hand
-- Avoid generic or verbose descriptions
-- Match the tone and context of the user's prompt
+      content: `You are a helpful AI assistant for managing reminders.
 
-Example: If user says "remind me to review the proposal", the description should be something like "Review proposal" or "Proposal review", not "This is a reminder to review the proposal document that was mentioned by the user".`,
+CRITICAL INSTRUCTIONS FOR WEBHOOK SELECTION:
+1. ALWAYS call list_webhooks FIRST before creating any reminder
+2. When user says "for [name]" (e.g., "for youssef", "for mina"), match it to the webhook with that exact name
+3. Use ONLY the actual webhook URLs returned by list_webhooks - NEVER use placeholder/example URLs
+4. If no name match is found, ask the user which webhook to use
+
+DESCRIPTION GUIDELINES:
+- Keep descriptions concise and relevant
+- Focus on the core task
+- Match the user's tone
+
+Example workflow:
+User: "create reminder for youssef about X"
+1. Call list_webhooks
+2. Find webhook named "youssef" 
+3. Use that webhook's URL in create_reminder`,
     };
 
     try {
