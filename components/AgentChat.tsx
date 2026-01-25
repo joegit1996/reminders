@@ -429,14 +429,32 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
                         {action.description}
                       </div>
                     )}
-                    <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', fontFamily: 'monospace', background: '#F5F5F5', padding: '0.5rem', border: '1px solid #000', overflowX: 'auto' }}>
-                      {JSON.stringify(action.args, null, 2)}
+                    <div style={{ marginTop: '0.75rem' }}>
+                      <ActionFormFields
+                        action={action}
+                        onArgsChange={(newArgs) => {
+                          // Update args in pendingActions
+                          const updatedActions = [...msg.pendingActions!];
+                          updatedActions[actionIdx] = { ...updatedActions[actionIdx], args: newArgs };
+                          setMessages(prev => {
+                            const updated = [...prev];
+                            updated[idx] = {
+                              ...updated[idx],
+                              pendingActions: updatedActions,
+                            };
+                            return updated;
+                          });
+                        }}
+                      />
                     </div>
                   </div>
                 ))}
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
                   <button
-                    onClick={() => handleApproveActions(msg.pendingActions!, idx)}
+                    onClick={() => {
+                      const editedArgs = msg.pendingActions?.map(a => a.args) || [];
+                      handleApproveActions(msg.pendingActions!, idx, editedArgs);
+                    }}
                     disabled={loading}
                     style={{
                       ...neoStyles.button,
