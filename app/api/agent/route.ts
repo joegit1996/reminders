@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { getAllReminders, getReminderById, createReminder, markReminderComplete, updateReminderDueDate } from '@/lib/db';
+import { getAllReminders, getReminderById, createReminder, markReminderComplete, updateReminderDueDate, getAllSavedWebhooks } from '@/lib/db';
 
 // Initialize OpenRouter (OpenAI-compatible API)
 const openai = new OpenAI({
@@ -291,12 +291,7 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
       }
       
       if (args.webhookName) {
-        const webhooksRes = await fetch(`${baseUrl}/api/webhooks`);
-        if (!webhooksRes.ok) {
-          console.error('Failed to fetch webhooks for search:', webhooksRes.status);
-          throw new Error(`Failed to fetch webhooks: ${webhooksRes.status}`);
-        }
-        const webhooks = await webhooksRes.json();
+        const webhooks = await getAllSavedWebhooks();
         const webhook = webhooks.find((w: any) => w.name.toLowerCase().includes(args.webhookName.toLowerCase()));
         if (webhook) {
           filtered = filtered.filter(r => r.slack_webhook === webhook.webhook_url);
