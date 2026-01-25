@@ -253,6 +253,41 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
+        ) : isWebhookField ? (
+          <select
+            value={value || ''}
+            onChange={(e) => {
+              const newArgs = { ...localArgs };
+              // The value is already the webhook_url from the option
+              const newValue = e.target.value;
+              if (path) {
+                const pathParts = path.split('.');
+                let current: any = newArgs;
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                  current = current[pathParts[i]] = current[pathParts[i]] || {};
+                }
+                current[pathParts[pathParts.length - 1]] = newValue;
+              } else {
+                newArgs[key] = newValue;
+              }
+              setLocalArgs(newArgs);
+            }}
+            style={{
+              ...neoStyles.input,
+              width: '100%',
+              fontSize: isMobile ? '0.875rem' : '1rem',
+            }}
+          >
+            <option value="">Select webhook...</option>
+            {webhooks.map((webhook) => (
+              <option key={webhook.id} value={webhook.webhook_url}>
+                {webhook.name} - {webhook.webhook_url}
+              </option>
+            ))}
+            {value && !webhooks.find(w => w.webhook_url === value) && (
+              <option value={value}>{value}</option>
+            )}
+          </select>
         ) : inputType === 'text' && (key.toLowerCase().includes('message') || key.toLowerCase().includes('description') || key.toLowerCase().includes('text')) ? (
           <textarea
             value={value || ''}
