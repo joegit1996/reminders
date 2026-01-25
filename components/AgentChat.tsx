@@ -52,7 +52,11 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
     try {
       // Find the message with pending actions
       const messageWithActions = messages[messageIndex];
-      if (!messageWithActions.pendingActions || !messageWithActions.responseMessage) return;
+      if (!messageWithActions.pendingActions || !messageWithActions.responseMessage) {
+        console.error('Missing pendingActions or responseMessage', messageWithActions);
+        setLoading(false);
+        return;
+      }
 
       // Filter conversation history up to the approval point (excluding the pending message)
       const conversationHistory = messages.slice(0, messageIndex).filter((msg, index) => {
@@ -74,6 +78,8 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           responseMessage: messageWithActions.responseMessage, // Send the original response message
         }),
       });
+
+      console.log('Approval response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();

@@ -362,6 +362,67 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { message, conversationHistory = [], approveActions, pendingActionId, responseMessage: storedResponseMessage } = body;
 
+    // Use Llama 3.3 70B Instruct free model from OpenRouter (supports function calling)
+    // Free tier model that supports tool use which is required for function calling
+    const modelName = 'meta-llama/llama-3.3-70b-instruct:free';
+
+    // If this is an approval request, execute the stored response message's tool calls
+    if (approveActions && storedResponseMessage && storedResponseMessage.tool_calls) {
+      const functionResults = [];
+      const functionCallsData: Array<{ name: string; args: any }> = [];
+      
+      for (const toolCall of storedResponseMessage.tool_calls) {
+        if (toolCall.type === 'function') {
+          const functionName = toolCall.function.name;
+          const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+          
+          // Execute the function
+          const functionResult = await executeFunction(functionName, functionArgs);
+          functionResults.push({
+            role: 'tool' as const,
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(functionResult),
+          });
+          
+          functionCallsData.push({
+            name: functionName,
+            args: functionArgs,
+          });
+        }
+      }
+
+      // Build conversation history for final response
+      const filteredHistory = conversationHistory.filter((msg: any, index: number) => {
+        if (index === 0 && msg.role === 'assistant') {
+          return false;
+        }
+        return true;
+      });
+
+      const historyMessages = filteredHistory.map((msg: any) => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content,
+      }));
+
+      // Add function results to messages and get final response
+      const finalMessages = [
+        ...historyMessages,
+        storedResponseMessage,
+        ...functionResults,
+      ];
+
+      const finalCompletion = await openai.chat.completions.create({
+        model: modelName,
+        messages: finalMessages as any,
+      });
+
+      return NextResponse.json({
+        response: finalCompletion.choices[0].message.content || '',
+        functionCalls: functionCallsData,
+        approved: true,
+      });
+    }
+
     if (!message) {
       return NextResponse.json(
         { error: 'Message is required' },
@@ -390,10 +451,6 @@ export async function POST(request: NextRequest) {
       role: 'user',
       content: message,
     });
-
-    // Use Llama 3.3 70B Instruct free model from OpenRouter (supports function calling)
-    // Free tier model that supports tool use which is required for function calling
-    const modelName = 'meta-llama/llama-3.3-70b-instruct:free';
 
     try {
       const completion = await openai.chat.completions.create({
