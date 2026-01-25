@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { getAllReminders, getReminderById, createReminder, markReminderComplete, updateReminderDueDate } from '@/lib/db';
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Initialize DeepSeek (OpenAI-compatible API)
+const openai = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY || '',
+  baseURL: 'https://api.deepseek.com',
+});
 
-// Function definitions for Gemini
+// Function definitions for DeepSeek (OpenAI-compatible format)
 const functionDefinitions = [
   {
     name: 'create_reminder',
@@ -345,9 +348,9 @@ async function executeFunction(name: string, args: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.DEEPSEEK_API_KEY) {
       return NextResponse.json(
-        { error: 'GEMINI_API_KEY not configured' },
+        { error: 'DEEPSEEK_API_KEY not configured' },
         { status: 500 }
       );
     }
@@ -362,38 +365,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Initialize the model with function calling
-    // Try latest models in order: gemini-2.0-flash-exp -> gemini-1.5-flash
-    // Note: Gemini 3 Flash doesn't exist yet (as of 2025), using latest available Flash models
-    let model;
-    const modelOptions = ['gemini-2.0-flash-exp', 'gemini-1.5-flash'];
-    
-    for (const modelName of modelOptions) {
-      try {
-        model = genAI.getGenerativeModel({ 
-          model: modelName,
-          tools: [{ 
-            functionDeclarations: functionDefinitions as any 
-          }],
-        });
-        break; // Success, use this model
-      } catch (error) {
-        // Try next model
-        continue;
-      }
-    }
-    
-    // Final fallback if all fail
-    if (!model) {
-      model = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash',
-        tools: [{ 
-          functionDeclarations: functionDefinitions as any 
-        }],
-      });
-    }
-
-    // Build conversation history
+    // Build messages array (OpenAI format)
     // Filter out the initial welcome message and ensure first message is from user
     const filteredHistory = conversationHistory.filter((msg: any, index: number) => {
       // Skip the first message if it's from assistant (welcome message)
@@ -403,59 +375,96 @@ export async function POST(request: NextRequest) {
       return true;
     });
 
-    // Ensure we have at least one user message, or start fresh
-    const history = filteredHistory.length > 0 && filteredHistory[0].role === 'user'
-      ? filteredHistory.map((msg: any) => ({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.content }],
-        }))
-      : [];
+    // Convert to OpenAI message format
+    const messages = filteredHistory.map((msg: any) => ({
+      role: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.content,
+    }));
 
-    const chat = model.startChat({
-      history: history,
+    // Add current user message
+    messages.push({
+      role: 'user',
+      content: message,
     });
 
-    // Send the user message
-    const result = await chat.sendMessage(message);
-    const response = result.response;
+    // Try models in order: deepseek-chat -> deepseek-coder -> deepseek-reasoner
+    const modelOptions = ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'];
+    let lastError: any = null;
 
-    // Check if the model wants to call a function
-    const functionCalls = response.functionCalls();
-    
-    if (functionCalls && functionCalls.length > 0) {
-      const functionResults = [];
-      
-      for (const functionCall of functionCalls) {
-        const functionName = functionCall.name;
-        const functionArgs = functionCall.args;
-        
-        // Execute the function
-        const functionResult = await executeFunction(functionName, functionArgs);
-        functionResults.push({
-          functionResponse: {
-            name: functionName,
-            response: functionResult,
-          },
+    for (const modelName of modelOptions) {
+      try {
+        const completion = await openai.chat.completions.create({
+          model: modelName,
+          messages: messages as any,
+          tools: functionDefinitions.map(fn => ({
+            type: 'function',
+            function: {
+              name: fn.name,
+              description: fn.description,
+              parameters: fn.parameters,
+            },
+          })),
+          tool_choice: 'auto',
         });
-      }
 
-      // Send function results back to the model
-      const finalResult = await chat.sendMessage(functionResults);
-      const finalResponse = finalResult.response;
-      
-      return NextResponse.json({
-        response: finalResponse.text(),
-        functionCalls: functionCalls.map((fc: any) => ({
-          name: fc.name,
-          args: fc.args,
-        })),
-      });
+        const responseMessage = completion.choices[0].message;
+
+        // Check if the model wants to call a function
+        if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+          const functionResults = [];
+          const functionCallsData: Array<{ name: string; args: any }> = [];
+          
+          for (const toolCall of responseMessage.tool_calls) {
+            if (toolCall.type === 'function') {
+              const functionName = toolCall.function.name;
+              const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+              
+              // Execute the function
+              const functionResult = await executeFunction(functionName, functionArgs);
+              functionResults.push({
+                role: 'tool' as const,
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(functionResult),
+              });
+              
+              functionCallsData.push({
+                name: functionName,
+                args: functionArgs,
+              });
+            }
+          }
+
+          // Add function results to messages and get final response
+          const finalMessages = [
+            ...messages,
+            responseMessage,
+            ...functionResults,
+          ];
+
+          const finalCompletion = await openai.chat.completions.create({
+            model: modelName,
+            messages: finalMessages as any,
+          });
+
+          return NextResponse.json({
+            response: finalCompletion.choices[0].message.content || '',
+            functionCalls: functionCallsData,
+          });
+        }
+
+        // No function calls, just return the text response
+        return NextResponse.json({
+          response: responseMessage.content || '',
+        });
+      } catch (error: any) {
+        lastError = error;
+        // Try next model
+        continue;
+      }
     }
 
-    // No function calls, just return the text response
-    return NextResponse.json({
-      response: response.text(),
-    });
+    // If all models failed, throw the last error
+    throw lastError || new Error('All models failed');
   } catch (error) {
     console.error('Error in agent:', error);
     return NextResponse.json(
