@@ -403,25 +403,33 @@ export async function POST(request: NextRequest) {
         return await createCall(primaryModel);
       } catch (primaryError: any) {
         lastError = primaryError;
-        const isRetryable = primaryError?.status === 400 || 
-                           primaryError?.status === 502 || 
-                           primaryError?.status === 503 || 
-                           primaryError?.status === 504 ||
-                           primaryError?.code === 400 ||
-                           primaryError?.code === 502 ||
-                           primaryError?.code === 503 ||
-                           primaryError?.code === 504;
+        
+        // Check error code in multiple possible locations (OpenRouter nests errors)
+        const errorCode = primaryError?.error?.code || primaryError?.code || primaryError?.status;
+        const errorMessage = primaryError?.error?.message || primaryError?.message || '';
+        
+        console.log(`[AGENT] Primary model error - code: ${errorCode}, message: ${errorMessage}`);
+        
+        const isRetryable = errorCode === 400 || 
+                           errorCode === 502 || 
+                           errorCode === 503 || 
+                           errorCode === 504 ||
+                           errorMessage.includes('Invalid JSON') ||
+                           errorMessage.includes('Upstream error') ||
+                           errorMessage.includes('Provider returned error');
         
         if (isRetryable) {
-          console.log(`[AGENT] Primary model failed, trying fallback model: ${fallbackModel}`);
+          console.log(`[AGENT] Primary model failed (${errorCode}), trying fallback model: ${fallbackModel}`);
           try {
             return await createCall(fallbackModel);
           } catch (fallbackError: any) {
-            console.error(`[AGENT] Fallback model also failed:`, fallbackError);
+            const fallbackCode = fallbackError?.error?.code || fallbackError?.code || fallbackError?.status;
+            console.error(`[AGENT] Fallback model also failed (${fallbackCode}):`, fallbackError);
             throw fallbackError;
           }
         } else {
           // Non-retryable error, throw immediately
+          console.log(`[AGENT] Non-retryable error (${errorCode}), not trying fallback`);
           throw primaryError;
         }
       }
