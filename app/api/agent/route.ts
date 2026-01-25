@@ -386,9 +386,46 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { message, conversationHistory = [], approveActions, pendingActionId, responseMessage: storedResponseMessage } = body;
 
-    // Use Llama 3.3 70B Instruct free model from OpenRouter (supports function calling)
-    // Free tier model that supports tool use which is required for function calling
-    const modelName = 'meta-llama/llama-3.3-70b-instruct:free';
+    // Model configuration with fallback
+    const primaryModel = 'meta-llama/llama-3.3-70b-instruct:free';
+    const fallbackModel = 'glm-4.5-air:free';
+    
+    // Helper function to try API call with fallback models
+    async function callWithFallback(
+      createCall: (model: string) => Promise<any>,
+      errorContext: string
+    ): Promise<any> {
+      let lastError: any = null;
+      
+      // Try primary model first
+      try {
+        console.log(`[AGENT] Trying ${errorContext} with primary model: ${primaryModel}`);
+        return await createCall(primaryModel);
+      } catch (primaryError: any) {
+        lastError = primaryError;
+        const isRetryable = primaryError?.status === 400 || 
+                           primaryError?.status === 502 || 
+                           primaryError?.status === 503 || 
+                           primaryError?.status === 504 ||
+                           primaryError?.code === 400 ||
+                           primaryError?.code === 502 ||
+                           primaryError?.code === 503 ||
+                           primaryError?.code === 504;
+        
+        if (isRetryable) {
+          console.log(`[AGENT] Primary model failed, trying fallback model: ${fallbackModel}`);
+          try {
+            return await createCall(fallbackModel);
+          } catch (fallbackError: any) {
+            console.error(`[AGENT] Fallback model also failed:`, fallbackError);
+            throw fallbackError;
+          }
+        } else {
+          // Non-retryable error, throw immediately
+          throw primaryError;
+        }
+      }
+    }
 
     // If this is an approval request, execute the stored response message's tool calls
     if (approveActions && storedResponseMessage && storedResponseMessage.tool_calls) {
@@ -435,11 +472,14 @@ export async function POST(request: NextRequest) {
         ...functionResults,
       ];
 
-      const finalCompletion = await openai.chat.completions.create({
-        model: modelName,
-        messages: finalMessages as any,
-        stream: false,
-      });
+      const finalCompletion = await callWithFallback(
+        (model) => openai.chat.completions.create({
+          model: model,
+          messages: finalMessages as any,
+          stream: false,
+        }),
+        'approval flow final completion'
+      );
 
       if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
         console.error('[AGENT] No choices in finalCompletion (approval flow):', finalCompletion);
@@ -517,20 +557,23 @@ User: "create reminder for youssef about X"
     };
 
     try {
-      const completion = await openai.chat.completions.create({
-        model: modelName,
-        messages: [systemMessage, ...messages] as any,
-        tools: functionDefinitions.map(fn => ({
-          type: 'function',
-          function: {
-            name: fn.name,
-            description: fn.description,
-            parameters: fn.parameters,
-          },
-        })),
-        tool_choice: 'auto',
-        stream: false,
-      });
+      const completion = await callWithFallback(
+        (model) => openai.chat.completions.create({
+          model: model,
+          messages: [systemMessage, ...messages] as any,
+          tools: functionDefinitions.map(fn => ({
+            type: 'function',
+            function: {
+              name: fn.name,
+              description: fn.description,
+              parameters: fn.parameters,
+            },
+          })),
+          tool_choice: 'auto',
+          stream: false,
+        }),
+        'initial completion'
+      );
 
       if (!completion.choices || completion.choices.length === 0) {
         console.error('[AGENT] No choices in completion:', completion);
@@ -573,11 +616,14 @@ User: "create reminder for youssef about X"
           ...functionResults,
         ];
 
-        const finalCompletion = await openai.chat.completions.create({
-          model: modelName,
-          messages: finalMessages as any,
-          stream: false,
-        });
+        const finalCompletion = await callWithFallback(
+          (model) => openai.chat.completions.create({
+            model: model,
+            messages: finalMessages as any,
+            stream: false,
+          }),
+          'approval flow duplicate completion'
+        );
 
         if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
           console.error('[AGENT] No choices in finalCompletion (approval duplicate):', finalCompletion);
@@ -812,20 +858,23 @@ User: "create reminder for youssef about X"
         
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
-            finalCompletion = await openai.chat.completions.create({
-              model: modelName,
-              messages: finalMessages as any,
-              tools: functionDefinitions.map(fn => ({
-                type: 'function',
-                function: {
-                  name: fn.name,
-                  description: fn.description,
-                  parameters: fn.parameters,
-                },
-              })),
-              tool_choice: 'auto',
-              stream: false,
-            });
+            finalCompletion = await callWithFallback(
+              (model) => openai.chat.completions.create({
+                model: model,
+                messages: finalMessages as any,
+                tools: functionDefinitions.map(fn => ({
+                  type: 'function',
+                  function: {
+                    name: fn.name,
+                    description: fn.description,
+                    parameters: fn.parameters,
+                  },
+                })),
+                tool_choice: 'auto',
+                stream: false,
+              }),
+              `follow-up completion (attempt ${attempt})`
+            );
             // Success, break out of retry loop
             break;
           } catch (apiError: any) {
@@ -1020,11 +1069,14 @@ User: "create reminder for youssef about X"
             ...followUpFunctionResults,
           ];
 
-          const finalTextCompletion = await openai.chat.completions.create({
-            model: modelName,
-            messages: finalMessagesWithResults as any,
-            stream: false,
-          });
+          const finalTextCompletion = await callWithFallback(
+            (model) => openai.chat.completions.create({
+              model: model,
+              messages: finalMessagesWithResults as any,
+              stream: false,
+            }),
+            'final text completion'
+          );
 
           if (!finalTextCompletion.choices || finalTextCompletion.choices.length === 0) {
             console.error('[AGENT] No choices in finalTextCompletion:', finalTextCompletion);
