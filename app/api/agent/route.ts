@@ -515,21 +515,83 @@ export async function POST(request: NextRequest) {
 
       // Check if the model wants to call a function
       if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+        // Define read-only operations that don't require approval
+        const readOnlyOperations = ['list_reminders', 'get_reminder', 'search_reminders', 'list_webhooks'];
+        
+        // Separate read and write operations
+        const allToolCalls = responseMessage.tool_calls.filter((tc: any) => tc.type === 'function');
+        const writeOperations = allToolCalls.filter((tc: any) => !readOnlyOperations.includes(tc.function.name));
+        const readOperations = allToolCalls.filter((tc: any) => readOnlyOperations.includes(tc.function.name));
 
-        // Otherwise, return pending actions for approval
-        const pendingActions = responseMessage.tool_calls
-          .filter((tc: any) => tc.type === 'function')
-          .map((tc: any) => ({
+        // If there are write operations, require approval
+        if (writeOperations.length > 0) {
+          const pendingActions = writeOperations.map((tc: any) => ({
             id: tc.id,
             name: tc.function.name,
             args: JSON.parse(tc.function.arguments || '{}'),
             description: functionDefinitions.find(fn => fn.name === tc.function.name)?.description || '',
+            toolCall: tc, // Store full tool call for execution
           }));
 
+          // Execute read operations immediately (no approval needed)
+          const readResults = [];
+          for (const toolCall of readOperations) {
+            const functionName = toolCall.function.name;
+            const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+            const functionResult = await executeFunction(functionName, functionArgs);
+            readResults.push({
+              role: 'tool' as const,
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(functionResult),
+            });
+          }
+
+          // Store the response message for later execution
+          return NextResponse.json({
+            response: responseMessage.content || 'I need your approval to proceed with the following actions:',
+            pendingActions: pendingActions,
+            requiresApproval: true,
+            responseMessage: responseMessage, // Store full response for execution
+          });
+        }
+
+        // All operations are read-only, execute immediately
+        const functionResults = [];
+        const functionCallsData: Array<{ name: string; args: any }> = [];
+        
+        for (const toolCall of allToolCalls) {
+          const functionName = toolCall.function.name;
+          const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+          
+          // Execute the function
+          const functionResult = await executeFunction(functionName, functionArgs);
+          functionResults.push({
+            role: 'tool' as const,
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(functionResult),
+          });
+          
+          functionCallsData.push({
+            name: functionName,
+            args: functionArgs,
+          });
+        }
+
+        // Add function results to messages and get final response
+        const finalMessages = [
+          ...messages,
+          responseMessage,
+          ...functionResults,
+        ];
+
+        const finalCompletion = await openai.chat.completions.create({
+          model: modelName,
+          messages: finalMessages as any,
+        });
+
         return NextResponse.json({
-          response: responseMessage.content || 'I need your approval to proceed with the following actions:',
-          pendingActions: pendingActions,
-          requiresApproval: true,
+          response: finalCompletion.choices[0].message.content || '',
+          functionCalls: functionCallsData,
         });
       }
 
