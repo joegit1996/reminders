@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { text, dueDate, periodDays, slackWebhook } = body;
+    const { text, dueDate, periodDays, slackWebhook, delayMessage, delayWebhooks } = body;
 
     // Validation
     if (!text || !dueDate || !periodDays || !slackWebhook) {
@@ -58,7 +58,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const reminder = await createReminder(text, dueDate, periodDays, slackWebhook);
+    // Validate delay webhooks if provided
+    if (delayWebhooks && Array.isArray(delayWebhooks)) {
+      for (const webhook of delayWebhooks) {
+        if (!webhook.startsWith('https://hooks.slack.com/')) {
+          return NextResponse.json(
+            { error: 'Invalid delay webhook URL' },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    const reminder = await createReminder(
+      text,
+      dueDate,
+      periodDays,
+      slackWebhook,
+      delayMessage || null,
+      delayWebhooks || []
+    );
     
     // Send immediate reminder
     const { sendSlackReminder } = await import('@/lib/slack');

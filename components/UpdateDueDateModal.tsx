@@ -9,6 +9,8 @@ interface Reminder {
   due_date: string;
   period_days: number;
   slack_webhook: string;
+  delay_message: string | null;
+  delay_webhooks: string[];
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
@@ -62,7 +64,13 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
         throw new Error(data.error || 'Failed to update due date');
       }
 
+      const result = await response.json();
       await fetchUpdateLogs();
+      
+      if (result.delayMessageSent) {
+        alert('Due date updated and delay message sent successfully!');
+      }
+      
       onUpdated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

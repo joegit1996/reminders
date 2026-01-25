@@ -50,7 +50,7 @@ export async function PATCH(
 
     const id = parseInt(params.id);
     const body = await request.json();
-    const { action, dueDate } = body;
+    const { action, dueDate, delayMessage, delayWebhooks } = body;
 
     if (action === 'complete') {
       const reminder = await markReminderComplete(id);
@@ -67,6 +67,42 @@ export async function PATCH(
 
       const result = await updateReminderDueDate(id, dueDate);
       return NextResponse.json(result);
+    }
+
+    if (action === 'update-delay-config') {
+      // Validate delay webhooks if provided
+      if (delayWebhooks && Array.isArray(delayWebhooks)) {
+        for (const webhook of delayWebhooks) {
+          if (!webhook.startsWith('https://hooks.slack.com/')) {
+            return NextResponse.json(
+              { error: 'Invalid delay webhook URL' },
+              { status: 400 }
+            );
+          }
+        }
+      }
+
+      const { getReminderById } = await import('@/lib/db');
+      const reminder = await getReminderById(id);
+      if (!reminder) {
+        return NextResponse.json(
+          { error: 'Reminder not found' },
+          { status: 404 }
+        );
+      }
+
+      const { data: updatedReminder, error } = await (await import('@/lib/supabase')).supabase
+        .from('reminders')
+        .update({
+          delay_message: delayMessage || null,
+          delay_webhooks: delayWebhooks || [],
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json(updatedReminder);
     }
 
     return NextResponse.json(

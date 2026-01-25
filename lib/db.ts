@@ -6,8 +6,17 @@ export interface Reminder {
   due_date: string;
   period_days: number;
   slack_webhook: string;
+  delay_message: string | null;
+  delay_webhooks: string[];
   is_complete: boolean;
   last_sent: string | null;
+  created_at: string;
+}
+
+export interface SavedWebhook {
+  id: number;
+  name: string;
+  webhook_url: string;
   created_at: string;
 }
 
@@ -71,7 +80,9 @@ export async function createReminder(
   text: string,
   dueDate: string,
   periodDays: number,
-  slackWebhook: string
+  slackWebhook: string,
+  delayMessage?: string | null,
+  delayWebhooks?: string[]
 ): Promise<Reminder> {
   const { data, error } = await supabase
     .from('reminders')
@@ -80,6 +91,8 @@ export async function createReminder(
       due_date: dueDate,
       period_days: periodDays,
       slack_webhook: slackWebhook,
+      delay_message: delayMessage || null,
+      delay_webhooks: delayWebhooks || [],
       is_complete: false,
     })
     .select()
@@ -93,7 +106,7 @@ export async function createReminder(
 export async function updateReminderDueDate(
   id: number,
   newDueDate: string
-): Promise<{ reminder: Reminder; log: DueDateUpdateLog }> {
+): Promise<{ reminder: Reminder; log: DueDateUpdateLog; delayMessageSent: boolean }> {
   // Get current reminder
   const reminder = await getReminderById(id);
   if (!reminder) {
@@ -125,9 +138,22 @@ export async function updateReminderDueDate(
 
   if (logError) throw logError;
 
+  // Send delay message if configured
+  let delayMessageSent = false;
+  if (updatedReminder.delay_message && updatedReminder.delay_webhooks && updatedReminder.delay_webhooks.length > 0) {
+    const { sendDelayMessage } = await import('./slack');
+    const results = await sendDelayMessage(
+      updatedReminder.delay_message,
+      newDueDate,
+      updatedReminder.delay_webhooks
+    );
+    delayMessageSent = results.sent > 0;
+  }
+
   return {
     reminder: updatedReminder as Reminder,
     log: log as DueDateUpdateLog,
+    delayMessageSent,
   };
 }
 
@@ -189,4 +215,53 @@ export async function getUpdateLogs(reminderId: number): Promise<DueDateUpdateLo
 
   if (error) throw error;
   return data as DueDateUpdateLog[];
+}
+
+// Saved Webhooks CRUD operations
+export async function getAllSavedWebhooks(): Promise<SavedWebhook[]> {
+  const { data, error } = await supabase
+    .from('saved_webhooks')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return data as SavedWebhook[];
+}
+
+export async function createSavedWebhook(name: string, webhookUrl: string): Promise<SavedWebhook> {
+  const { data, error } = await supabase
+    .from('saved_webhooks')
+    .insert({
+      name,
+      webhook_url: webhookUrl,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as SavedWebhook;
+}
+
+export async function updateSavedWebhook(id: number, name: string, webhookUrl: string): Promise<SavedWebhook> {
+  const { data, error } = await supabase
+    .from('saved_webhooks')
+    .update({
+      name,
+      webhook_url: webhookUrl,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as SavedWebhook;
+}
+
+export async function deleteSavedWebhook(id: number): Promise<void> {
+  const { error } = await supabase
+    .from('saved_webhooks')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
 }

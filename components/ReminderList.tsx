@@ -8,6 +8,8 @@ interface Reminder {
   due_date: string;
   period_days: number;
   slack_webhook: string;
+  delay_message: string | null;
+  delay_webhooks: string[];
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
