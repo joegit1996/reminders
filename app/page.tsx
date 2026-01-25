@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { format, differenceInDays } from 'date-fns';
+import Link from 'next/link';
 import ReminderForm from '@/components/ReminderForm';
 import ReminderList from '@/components/ReminderList';
 import UpdateDueDateModal from '@/components/UpdateDueDateModal';
@@ -83,19 +84,37 @@ export default function Home() {
         boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
         marginBottom: '2rem',
       }}>
-        <h1 style={{
-          fontSize: '2.5rem',
-          fontWeight: 'bold',
-          marginBottom: '0.5rem',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}>
-          📋 Reminders
-        </h1>
-        <p style={{ color: '#666', marginBottom: '2rem' }}>
-          Manage your Slack reminders and never miss a deadline
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+          <div>
+            <h1 style={{
+              fontSize: '2.5rem',
+              fontWeight: 'bold',
+              marginBottom: '0.5rem',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>
+              📋 Reminders
+            </h1>
+            <p style={{ color: '#666' }}>
+              Manage your Slack reminders and never miss a deadline
+            </p>
+          </div>
+          <Link
+            href="/webhooks"
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#e5e7eb',
+              color: '#374151',
+              textDecoration: 'none',
+              borderRadius: '6px',
+              fontWeight: '500',
+              fontSize: '0.9rem',
+            }}
+          >
+            🔗 Manage Webhooks
+          </Link>
+        </div>
         <ReminderForm onReminderCreated={handleReminderCreated} />
       </div>
 

@@ -39,6 +39,8 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
       if (response.ok) {
         const data = await response.json();
         setSavedWebhooks(data);
+      } else {
+        console.error('Failed to fetch webhooks:', response.status);
       }
     } catch (error) {
       console.error('Error fetching saved webhooks:', error);
