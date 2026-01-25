@@ -194,7 +194,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
 
       <div>
         <label htmlFor="slackWebhook" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-          Slack Webhook URL *
+          Reminder Webhook URL * (for periodic reminders)
         </label>
         {savedWebhooks.length > 0 && (
           <select
@@ -331,8 +331,11 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                Delay Notification Webhooks (select multiple)
+                Delay Notification Webhooks (select multiple - separate from reminder webhook)
               </label>
+              <small style={{ color: '#666', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>
+                These webhooks will ONLY receive delay messages when the due date is updated. They are completely separate from the reminder webhook above.
+              </small>
               {savedWebhooks.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {savedWebhooks.map((wh) => (

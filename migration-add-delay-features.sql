@@ -21,8 +21,22 @@ CREATE TABLE IF NOT EXISTS saved_webhooks (
 );
 
 -- Enable Row Level Security on saved_webhooks
-ALTER TABLE saved_webhooks ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'saved_webhooks') THEN
+    ALTER TABLE saved_webhooks ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 -- Create policy to allow all operations on saved_webhooks
-CREATE POLICY IF NOT EXISTS "Allow all operations on saved_webhooks" ON saved_webhooks
-  FOR ALL USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'saved_webhooks' 
+    AND policyname = 'Allow all operations on saved_webhooks'
+  ) THEN
+    CREATE POLICY "Allow all operations on saved_webhooks" ON saved_webhooks
+      FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
