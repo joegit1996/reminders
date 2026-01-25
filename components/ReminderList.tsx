@@ -203,87 +203,37 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                 padding: isMobile ? '1rem' : '1.5rem',
                 border: `4px solid ${reminder.is_complete ? '#6BCB77' : isOverdue ? '#FF6B6B' : '#000000'}`,
                 borderRadius: '0',
-                background: reminder.is_complete ? '#FFFFFF' : isOverdue ? '#FFFFFF' : '#FFFFFF',
+                background: '#FFFFFF',
                 boxShadow: reminder.is_complete ? '4px 4px 0px 0px #6BCB77' : isOverdue ? '4px 4px 0px 0px #FF6B6B' : '8px 8px 0px 0px #000000',
                 opacity: reminder.is_complete ? 0.8 : 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                width: '100%',
               }}
             >
-              <div style={{ 
-                display: 'flex', 
+              {/* Header: Title and Action Buttons */}
+              <div style={{
+                display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between', 
-                alignItems: isMobile ? 'stretch' : 'flex-start', 
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'stretch' : 'flex-start',
                 gap: '1rem',
-                marginBottom: '1rem',
                 width: '100%',
               }}>
-                <div style={{ 
-                  flex: isMobile ? 'none' : '1 1 auto', 
-                  minWidth: 0, 
-                  width: isMobile ? '100%' : 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
+                <h3 style={{
+                  fontSize: isMobile ? '1rem' : '1.25rem',
+                  fontWeight: '900',
+                  textDecoration: reminder.is_complete ? 'line-through' : 'none',
+                  wordBreak: 'break-word',
+                  color: '#000000',
+                  textTransform: 'uppercase',
+                  lineHeight: '1.3',
+                  margin: 0,
+                  flex: isMobile ? 'none' : '1 1 auto',
                 }}>
-                  <h3 style={{
-                    fontSize: isMobile ? '1rem' : '1.25rem',
-                    fontWeight: '900',
-                    marginBottom: '0.75rem',
-                    textDecoration: reminder.is_complete ? 'line-through' : 'none',
-                    wordBreak: 'break-word',
-                    color: '#000000',
-                    textTransform: 'uppercase',
-                    lineHeight: '1.3',
-                    writingMode: 'horizontal-tb',
-                    textOrientation: 'mixed',
-                  }}>
-                    {reminder.text}
-                  </h3>
-                  {reminder.description && (
-                    <p style={{
-                      fontSize: isMobile ? '0.875rem' : '1rem',
-                      color: '#000000',
-                      marginBottom: '0.75rem',
-                      lineHeight: '1.5',
-                      wordBreak: 'break-word',
-                      fontWeight: '600',
-                      columnCount: isMobile ? 1 : 'auto',
-                      columnWidth: isMobile ? '100%' : '200px',
-                      columnGap: isMobile ? '0' : '2rem',
-                      columnFill: 'balance',
-                      width: '100%',
-                      flex: '1 1 auto',
-                    }}>
-                      {reminder.description}
-                    </p>
-                  )}
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: isSmallMobile ? 'column' : 'row',
-                    flexWrap: 'wrap', 
-                    gap: isMobile ? '0.5rem' : '1rem', 
-                    fontSize: isMobile ? '0.75rem' : isSmallMobile ? '0.8rem' : '0.875rem', 
-                    color: '#000000',
-                    fontWeight: '600',
-                    lineHeight: '1.6',
-                  }}>
-                    <span style={{ whiteSpace: 'nowrap' }}>
-                      📅 DUE: <strong>{format(new Date(reminder.due_date), 'MMM dd, yyyy')}</strong>
-                    </span>
-                    <span style={{ whiteSpace: 'nowrap' }}>
-                      ⏰ DAYS REMAINING: <strong style={{ color: isOverdue ? '#FF6B6B' : '#6BCB77' }}>
-                        {daysRemaining >= 0 ? daysRemaining : `-${Math.abs(daysRemaining)} (OVERDUE)`}
-                      </strong>
-                    </span>
-                    <span style={{ whiteSpace: 'nowrap' }}>
-                      🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
-                    </span>
-                    {reminder.last_sent && (
-                      <span style={{ whiteSpace: 'nowrap' }}>
-                        📤 LAST SENT: <strong>{format(new Date(reminder.last_sent), 'MMM dd, yyyy HH:mm')}</strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
+                  {reminder.text}
+                </h3>
                 <div style={{ 
                   display: 'flex', 
                   flexDirection: isSmallMobile ? 'column' : 'row',
