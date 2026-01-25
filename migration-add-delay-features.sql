@@ -2,9 +2,15 @@
 -- Run this SQL in your Supabase SQL Editor to update existing database
 
 -- Add delay_message and delay_webhooks columns to reminders table
-ALTER TABLE reminders 
-ADD COLUMN IF NOT EXISTS delay_message TEXT,
-ADD COLUMN IF NOT EXISTS delay_webhooks JSONB DEFAULT '[]'::jsonb;
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reminders' AND column_name='delay_message') THEN
+    ALTER TABLE reminders ADD COLUMN delay_message TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reminders' AND column_name='delay_webhooks') THEN
+    ALTER TABLE reminders ADD COLUMN delay_webhooks JSONB DEFAULT '[]'::jsonb;
+  END IF;
+END $$;
 
 -- Create saved_webhooks table (for reusable webhook storage)
 CREATE TABLE IF NOT EXISTS saved_webhooks (
