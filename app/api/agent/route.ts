@@ -387,7 +387,7 @@ export async function POST(request: NextRequest) {
     const { message, conversationHistory = [], approveActions, pendingActionId, responseMessage: storedResponseMessage } = body;
 
     // Model configuration with fallback
-    const primaryModel = 'glm-4.5-air:free';
+    const primaryModel = 'zhipu/glm-4-flash'; // GLM-4 Flash model (free tier)
     const fallbackModel = 'meta-llama/llama-3.3-70b-instruct:free';
     
     // Helper function to try API call with fallback models
