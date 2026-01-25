@@ -170,6 +170,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
   const [allPendingActions, setAllPendingActions] = useState<PendingAction[]>([]);
   const [currentResponseMessage, setCurrentResponseMessage] = useState<any>(null);
   const [editedArgs, setEditedArgs] = useState<any[]>([]);
+  const [allFunctionResults, setAllFunctionResults] = useState<any[]>([]); // Accumulate all function results
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -246,6 +247,10 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
 
       const data = await response.json();
       
+      // Accumulate function results
+      const accumulatedResults = [...allFunctionResults, ...(data.functionCalls || [])];
+      setAllFunctionResults(accumulatedResults);
+      
       // Track approved actions
       const approvedActions = [...(messageWithActions.approvedActions || []), {
         name: currentAction.name,
@@ -256,9 +261,67 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
       const nextActionIndex = currentActionIndex + 1;
       
       if (nextActionIndex >= allPendingActions.length) {
-        // All actions approved - add a new assistant message with the final response
-        const approvedActionNames = approvedActions.map(a => a.name).join(', ');
-        const finalResponse = data.response || `✅ All actions approved and executed: ${approvedActionNames}`;
+        // All actions approved - request summary with all function results
+        // Build conversation history including all function results
+        const summaryHistory = [
+          ...conversationHistory,
+          {
+            role: 'assistant',
+            content: messageWithActions.content,
+          },
+        ];
+
+        // Add all tool calls and their results to the history
+        const allToolCalls = allPendingActions.map((action, idx) => {
+          const toolCall = currentResponseMessage.tool_calls.find((tc: any) => tc.id === action.id);
+          if (!toolCall) return null;
+          return {
+            ...toolCall,
+            function: {
+              ...toolCall.function,
+              arguments: JSON.stringify(updatedArgs[idx] || action.args),
+            },
+          };
+        }).filter(Boolean);
+
+        // Create tool result messages for all executed actions
+        const toolResultMessages = allToolCalls.map((tc: any, idx: number) => {
+          const executedAction = accumulatedResults[idx];
+          return {
+            role: 'tool' as const,
+            tool_call_id: tc.id,
+            content: executedAction ? JSON.stringify(executedAction.args) : JSON.stringify({ success: true }),
+          };
+        });
+
+        const summaryRequestHistory = [
+          ...summaryHistory,
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: allToolCalls,
+          },
+          ...toolResultMessages,
+        ];
+
+        // Request summary without executing (no approveActions flag)
+        const summaryResponse = await fetch('/api/agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: 'Please provide a comprehensive summary of all the actions that were just approved and executed, including details about what was created or updated.',
+            conversationHistory: summaryRequestHistory,
+          }),
+        });
+
+        let finalSummary = `✅ All ${allPendingActions.length} action(s) approved and executed: ${approvedActions.map(a => a.name).join(', ')}`;
+        
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json();
+          if (summaryData.response) {
+            finalSummary = summaryData.response;
+          }
+        }
         
         // Update the original message to remove pending status
         setMessages(prev => {
@@ -268,15 +331,15 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
             pendingActions: undefined,
             requiresApproval: false,
             responseMessage: undefined,
-            functionCalls: [...(updated[currentMessageIndex].functionCalls || []), ...(data.functionCalls || [])],
+            functionCalls: accumulatedResults,
             approvedActions: approvedActions,
           };
           
-          // Add a new assistant message with the final response
+          // Add a new assistant message with the final summary
           updated.splice(currentMessageIndex + 1, 0, {
             role: 'assistant',
-            content: finalResponse,
-            functionCalls: data.functionCalls,
+            content: finalSummary,
+            functionCalls: accumulatedResults,
             approved: true,
           });
           
@@ -290,6 +353,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         setAllPendingActions([]);
         setCurrentResponseMessage(null);
         setEditedArgs([]);
+        setAllFunctionResults([]);
 
         // Refresh reminders if a function was called
         if (data.functionCalls && data.functionCalls.length > 0) {
@@ -297,8 +361,6 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         }
       } else {
         // Move to next action
-        console.log('[FRONTEND] Moving to next action:', nextActionIndex, 'of', allPendingActions.length);
-        console.log('[FRONTEND] Next action args:', allPendingActions[nextActionIndex]?.args);
         setCurrentActionIndex(nextActionIndex);
         
         // Ensure editedArgs has the next action's args initialized
@@ -306,7 +368,6 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           const updated = [...prev];
           if (updated[nextActionIndex] === undefined) {
             updated[nextActionIndex] = JSON.parse(JSON.stringify(allPendingActions[nextActionIndex].args || {}));
-            console.log('[FRONTEND] Initialized args for next action:', updated[nextActionIndex]);
           }
           return updated;
         });
@@ -408,8 +469,6 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
       
       // If this requires approval, show modal
       if (data.requiresApproval && data.pendingActions) {
-        console.log('[FRONTEND] Received pending actions:', data.pendingActions.length, data.pendingActions);
-        
         const newMessage: Message = {
           role: 'assistant',
           content: data.response,
@@ -420,17 +479,15 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         setMessages(prev => [...prev, newMessage]);
         
         // Show approval modal with ALL pending actions
-        console.log('[FRONTEND] Setting up modal with actions:', data.pendingActions.map((a: PendingAction) => ({ name: a.name, args: a.args })));
         setAllPendingActions(data.pendingActions);
         setCurrentMessageIndex(messages.length); // Index of the new message
         setCurrentActionIndex(0);
         setCurrentResponseMessage(data.responseMessage);
         // Initialize editedArgs with a deep copy of each action's args
         setEditedArgs(data.pendingActions.map((a: PendingAction) => {
-          const argsCopy = JSON.parse(JSON.stringify(a.args || {}));
-          console.log('[FRONTEND] Initializing args for action:', a.name, argsCopy);
-          return argsCopy;
+          return JSON.parse(JSON.stringify(a.args || {}));
         }));
+        setAllFunctionResults([]); // Reset function results
         setShowApprovalModal(true);
       } else {
         setMessages(prev => [...prev, {
@@ -690,7 +747,6 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
                           : JSON.parse(JSON.stringify(allPendingActions[currentActionIndex].args || {})),
                       }}
                       onArgsChange={(newArgs) => {
-                        console.log('[FRONTEND] Updating args for action index:', currentActionIndex, 'newArgs:', newArgs);
                         const updated = [...editedArgs];
                         updated[currentActionIndex] = JSON.parse(JSON.stringify(newArgs));
                         setEditedArgs(updated);
