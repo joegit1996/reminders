@@ -46,6 +46,8 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isSmallMobile = useMediaQuery('(max-width: 480px)');
   const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [webhookFilter, setWebhookFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchSavedWebhooks();
@@ -84,13 +86,113 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
     return differenceInDays(due, today);
   };
 
+  // Filter reminders by webhook
+  const filteredReminders = webhookFilter === 'all' 
+    ? reminders 
+    : reminders.filter(reminder => reminder.slack_webhook === webhookFilter);
+
+  // Sort reminders by due date
+  const sortedReminders = [...filteredReminders].sort((a, b) => {
+    const dateA = new Date(a.due_date).getTime();
+    const dateB = new Date(b.due_date).getTime();
+    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+  });
+
   return (
     <div>
-      <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '900', marginBottom: '1.5rem', color: '#000000', textTransform: 'uppercase' }}>
-        YOUR REMINDERS ({reminders.length})
-      </h2>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'stretch' : 'center',
+        gap: '1rem',
+        marginBottom: '1.5rem',
+        flexWrap: 'wrap',
+      }}>
+        <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '900', color: '#000000', textTransform: 'uppercase', margin: 0 }}>
+          YOUR REMINDERS ({sortedReminders.length})
+        </h2>
+        
+        <div style={{ 
+          display: 'flex', 
+          gap: '0.75rem', 
+          flexWrap: 'wrap',
+          width: isMobile ? '100%' : 'auto',
+        }}>
+          {/* Sort Control */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label htmlFor="sortOrder" style={{ 
+              fontSize: isMobile ? '0.75rem' : '0.875rem', 
+              fontWeight: '700', 
+              color: '#000000',
+              whiteSpace: 'nowrap',
+            }}>
+              SORT:
+            </label>
+            <select
+              id="sortOrder"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+              style={{
+                ...neoStyles.input,
+                padding: '0.5rem 0.75rem',
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                cursor: 'pointer',
+                minWidth: '120px',
+              }}
+              onFocus={(e) => {
+                e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+              }}
+              onBlur={(e) => {
+                e.target.style.boxShadow = 'none';
+              }}
+            >
+              <option value="asc">Due Date ↑</option>
+              <option value="desc">Due Date ↓</option>
+            </select>
+          </div>
+
+          {/* Filter Control */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label htmlFor="webhookFilter" style={{ 
+              fontSize: isMobile ? '0.75rem' : '0.875rem', 
+              fontWeight: '700', 
+              color: '#000000',
+              whiteSpace: 'nowrap',
+            }}>
+              FILTER:
+            </label>
+            <select
+              id="webhookFilter"
+              value={webhookFilter}
+              onChange={(e) => setWebhookFilter(e.target.value)}
+              style={{
+                ...neoStyles.input,
+                padding: '0.5rem 0.75rem',
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                cursor: 'pointer',
+                minWidth: '150px',
+              }}
+              onFocus={(e) => {
+                e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+              }}
+              onBlur={(e) => {
+                e.target.style.boxShadow = 'none';
+              }}
+            >
+              <option value="all">All Webhooks</option>
+              {savedWebhooks.map(webhook => (
+                <option key={webhook.id} value={webhook.webhook_url}>
+                  {webhook.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+      
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {reminders.map((reminder) => {
+        {sortedReminders.map((reminder) => {
           const daysRemaining = calculateDaysRemaining(reminder.due_date);
           const isOverdue = daysRemaining < 0;
 
