@@ -220,7 +220,14 @@ const functionDefinitions = [
 ];
 
 // Function implementations
-async function executeFunction(name: string, args: any) {
+async function executeFunction(name: string, args: any, req: NextRequest) {
+  // Get base URL from headers for server-side fetch calls
+  const protocol = req.headers.get('x-forwarded-proto') || 'http';
+  const host = req.headers.get('host') || 'localhost:3000';
+  const baseUrl = `${protocol}://${host}`;
+  
+  console.log('Executing function:', name, 'with args:', args, 'baseUrl:', baseUrl);
+  
   switch (name) {
     case 'create_reminder':
       const reminder = await createReminder(
@@ -383,8 +390,8 @@ export async function POST(request: NextRequest) {
           const functionName = toolCall.function.name;
           const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
           
-          // Execute the function
-          const functionResult = await executeFunction(functionName, functionArgs);
+                // Execute the function
+                const functionResult = await executeFunction(functionName, functionArgs, request);
           functionResults.push({
             role: 'tool' as const,
             tool_call_id: toolCall.id,
@@ -509,8 +516,8 @@ User: "create reminder for youssef about X"
             const functionName = toolCall.function.name;
             const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
             
-            // Execute the function
-            const functionResult = await executeFunction(functionName, functionArgs);
+                // Execute the function
+                const functionResult = await executeFunction(functionName, functionArgs, request);
             functionResults.push({
               role: 'tool' as const,
               tool_call_id: toolCall.id,
@@ -607,8 +614,8 @@ User: "create reminder for youssef about X"
             const functionName = toolCall.function.name;
             const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
             
-            // Execute the function
-            const functionResult = await executeFunction(functionName, functionArgs);
+                // Execute the function
+                const functionResult = await executeFunction(functionName, functionArgs, request);
             functionResults.push({
               role: 'tool' as const,
               tool_call_id: toolCall.id,
