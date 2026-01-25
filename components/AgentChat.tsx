@@ -161,6 +161,14 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Modal state for approvals
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [currentActionIndex, setCurrentActionIndex] = useState(0);
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(-1);
+  const [allPendingActions, setAllPendingActions] = useState<PendingAction[]>([]);
+  const [currentResponseMessage, setCurrentResponseMessage] = useState<any>(null);
+  const [editedArgs, setEditedArgs] = useState<any[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -170,37 +178,42 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
     scrollToBottom();
   }, [messages]);
 
-  const handleApproveActions = async (pendingActions: PendingAction[], messageIndex: number, editedArgs?: any[]) => {
+  // Handle approving the current action in the modal
+  const handleApproveCurrentAction = async () => {
+    if (currentActionIndex >= allPendingActions.length || currentMessageIndex === -1) return;
+    
     setLoading(true);
     try {
-      // Find the message with pending actions
-      const messageWithActions = messages[messageIndex];
-      if (!messageWithActions.pendingActions || !messageWithActions.responseMessage) {
-        console.error('Missing pendingActions or responseMessage', messageWithActions);
+      const messageWithActions = messages[currentMessageIndex];
+      if (!messageWithActions || !currentResponseMessage) {
+        console.error('Missing message or responseMessage');
         setLoading(false);
         return;
       }
 
-      // Filter conversation history up to the approval point (excluding the pending message)
-      const conversationHistory = messages.slice(0, messageIndex).filter((msg, index) => {
+      // Update edited args for current action
+      const updatedArgs = [...editedArgs];
+      
+      // Filter conversation history up to the approval point
+      const conversationHistory = messages.slice(0, currentMessageIndex).filter((msg, index) => {
         if (index === 0 && msg.role === 'assistant') {
           return false;
         }
         return true;
       });
 
-      // If editedArgs provided, update the stored response message with edited values
-      let responseMessageToSend = messageWithActions.responseMessage;
-      if (editedArgs && editedArgs.length > 0) {
+      // Update response message with edited values
+      let responseMessageToSend = currentResponseMessage;
+      if (updatedArgs.length > 0) {
         responseMessageToSend = {
-          ...responseMessageToSend,
-          tool_calls: responseMessageToSend.tool_calls.map((tc: any, idx: number) => {
-            if (idx < editedArgs.length && editedArgs[idx]) {
+          ...currentResponseMessage,
+          tool_calls: currentResponseMessage.tool_calls.map((tc: any, idx: number) => {
+            if (idx < updatedArgs.length && updatedArgs[idx]) {
               return {
                 ...tc,
                 function: {
                   ...tc.function,
-                  arguments: JSON.stringify(editedArgs[idx]),
+                  arguments: JSON.stringify(updatedArgs[idx]),
                 },
               };
             }
@@ -209,20 +222,18 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         };
       }
 
-      // Send approval with the stored response message (potentially edited)
+      // Send approval for ALL actions at once (the API handles execution)
       const response = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `I approve the following actions: ${pendingActions.map(a => a.name).join(', ')}`,
+          message: `I approve all ${allPendingActions.length} action(s)`,
           conversationHistory: conversationHistory,
           approveActions: true,
-          pendingActionId: pendingActions[0]?.id,
-          responseMessage: responseMessageToSend, // Send the (potentially edited) response message
+          pendingActionId: allPendingActions[0]?.id,
+          responseMessage: responseMessageToSend,
         }),
       });
-
-      console.log('Approval response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
@@ -234,17 +245,25 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
       // Update the message to remove pending actions and show result
       setMessages(prev => {
         const updated = [...prev];
-        updated[messageIndex] = {
-          ...updated[messageIndex],
+        updated[currentMessageIndex] = {
+          ...updated[currentMessageIndex],
           pendingActions: undefined,
           requiresApproval: false,
-          responseMessage: undefined, // Clear response message
-          content: data.response || updated[messageIndex].content + '\n\n✅ Actions approved and executed.',
+          responseMessage: undefined,
+          content: data.response || updated[currentMessageIndex].content + '\n\n✅ Actions approved and executed.',
           functionCalls: data.functionCalls,
           approved: true,
         };
         return updated;
       });
+
+      // Close modal
+      setShowApprovalModal(false);
+      setCurrentActionIndex(0);
+      setCurrentMessageIndex(-1);
+      setAllPendingActions([]);
+      setCurrentResponseMessage(null);
+      setEditedArgs([]);
 
       // Refresh reminders if a function was called
       if (data.functionCalls && data.functionCalls.length > 0) {
@@ -255,23 +274,35 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         role: 'assistant',
         content: `Error: ${error instanceof Error ? error.message : 'Failed to approve actions'}`,
       }]);
+      setShowApprovalModal(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRejectActions = (messageIndex: number) => {
+  // Handle rejecting the current action
+  const handleRejectCurrentAction = () => {
+    if (currentMessageIndex === -1) return;
+    
     setMessages(prev => {
       const updated = [...prev];
-      updated[messageIndex] = {
-        ...updated[messageIndex],
+      updated[currentMessageIndex] = {
+        ...updated[currentMessageIndex],
         pendingActions: undefined,
         requiresApproval: false,
         responseMessage: undefined,
-        content: updated[messageIndex].content + '\n\n❌ Actions rejected by user.',
+        content: updated[currentMessageIndex].content + '\n\n❌ Actions rejected by user.',
       };
       return updated;
     });
+    
+    // Close modal
+    setShowApprovalModal(false);
+    setCurrentActionIndex(0);
+    setCurrentMessageIndex(-1);
+    setAllPendingActions([]);
+    setCurrentResponseMessage(null);
+    setEditedArgs([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -310,15 +341,24 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
 
       const data = await response.json();
       
-      // If this requires approval, show pending actions
+      // If this requires approval, show modal
       if (data.requiresApproval && data.pendingActions) {
-        setMessages(prev => [...prev, {
+        const newMessage: Message = {
           role: 'assistant',
           content: data.response,
           pendingActions: data.pendingActions,
           requiresApproval: true,
           responseMessage: data.responseMessage, // Store for execution
-        }]);
+        };
+        setMessages(prev => [...prev, newMessage]);
+        
+        // Show approval modal
+        setAllPendingActions(data.pendingActions);
+        setCurrentMessageIndex(messages.length); // Index of the new message
+        setCurrentActionIndex(0);
+        setCurrentResponseMessage(data.responseMessage);
+        setEditedArgs(data.pendingActions.map((a: PendingAction) => ({ ...a.args })));
+        setShowApprovalModal(true);
       } else {
         setMessages(prev => [...prev, {
           role: 'assistant',
@@ -397,119 +437,18 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
             }}>
               {msg.content}
             </div>
-            {/* Pending Actions Approval UI */}
+            {/* Show indicator if actions need approval */}
             {msg.pendingActions && msg.pendingActions.length > 0 && (
-              <div 
-                style={{
-                  marginTop: '1rem',
-                  padding: '1rem',
-                  background: '#FFF9C4',
-                  border: '3px solid #000000',
-                  borderRadius: '0',
-                  boxShadow: '4px 4px 0px #000000',
-                  width: '100%',
-                  maxHeight: '400px',
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                }}
-              >
-                <div style={{
-                  fontWeight: '900',
-                  fontSize: isMobile ? '0.875rem' : '1rem',
-                  marginBottom: '0.75rem',
-                  textTransform: 'uppercase',
-                }}>
-                  ⚠️ APPROVAL REQUIRED
-                </div>
-                {msg.pendingActions.map((action, actionIdx) => (
-                  <div key={actionIdx} style={{
-                    marginBottom: '0.75rem',
-                    padding: '0.75rem',
-                    background: '#FFFFFF',
-                    border: '2px solid #000000',
-                    borderRadius: '0',
-                  }}>
-                    <div style={{ fontWeight: '700', marginBottom: '0.5rem', fontSize: isMobile ? '0.875rem' : '1rem' }}>
-                      {action.name}
-                    </div>
-                    {action.description && (
-                      <div style={{ fontSize: isMobile ? '0.75rem' : '0.875rem', marginBottom: '0.5rem', color: '#666' }}>
-                        {action.description}
-                      </div>
-                    )}
-                    <div style={{ marginTop: '0.75rem' }}>
-                      <ActionFormFields
-                        action={action}
-                        onArgsChange={(newArgs) => {
-                          // Update args in pendingActions
-                          const updatedActions = [...msg.pendingActions!];
-                          updatedActions[actionIdx] = { ...updatedActions[actionIdx], args: newArgs };
-                          setMessages(prev => {
-                            const updated = [...prev];
-                            updated[idx] = {
-                              ...updated[idx],
-                              pendingActions: updatedActions,
-                            };
-                            return updated;
-                          });
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-                  <button
-                    onClick={() => {
-                      const editedArgs = msg.pendingActions?.map(a => a.args) || [];
-                      handleApproveActions(msg.pendingActions!, idx, editedArgs);
-                    }}
-                    disabled={loading}
-                    style={{
-                      ...neoStyles.button,
-                      ...buttonVariants.success,
-                      padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.5rem',
-                      fontSize: isMobile ? '0.875rem' : '1rem',
-                      flex: 1,
-                      opacity: loading ? 0.6 : 1,
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!loading) {
-                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translate(0, 0)';
-                      e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                    }}
-                  >
-                    ✓ APPROVE
-                  </button>
-                  <button
-                    onClick={() => handleRejectActions(idx)}
-                    disabled={loading}
-                    style={{
-                      ...neoStyles.button,
-                      ...buttonVariants.danger,
-                      padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.5rem',
-                      fontSize: isMobile ? '0.875rem' : '1rem',
-                      flex: 1,
-                      opacity: loading ? 0.6 : 1,
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!loading) {
-                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translate(0, 0)';
-                      e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                    }}
-                  >
-                    ✗ REJECT
-                  </button>
-                </div>
+              <div style={{
+                marginTop: '0.5rem',
+                padding: '0.5rem',
+                background: '#FFF9C4',
+                border: '2px solid #000000',
+                borderRadius: '0',
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                fontWeight: '700',
+              }}>
+                ⚠️ {msg.pendingActions.length} action(s) pending approval
               </div>
             )}
             
@@ -597,6 +536,161 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           {loading ? '...' : 'SEND'}
         </button>
       </form>
+
+      {/* Approval Modal */}
+      {showApprovalModal && allPendingActions.length > 0 && currentActionIndex < allPendingActions.length && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: neoStyles.modalOverlay.background,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            // Don't close on overlay click - require explicit action
+            e.stopPropagation();
+          }}
+        >
+          <div
+            style={{
+              background: neoStyles.modalContent.background,
+              border: neoStyles.modalContent.border,
+              borderRadius: neoStyles.modalContent.borderRadius,
+              boxShadow: neoStyles.modalContent.boxShadow,
+              padding: isMobile ? '1.5rem' : '2rem',
+              maxWidth: '700px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1.5rem',
+            }}>
+              <h2 style={{
+                fontSize: isMobile ? '1.25rem' : '1.5rem',
+                fontWeight: '900',
+                color: '#000000',
+                textTransform: 'uppercase',
+                margin: 0,
+              }}>
+                ⚠️ APPROVAL REQUIRED
+              </h2>
+              <div style={{
+                fontSize: isMobile ? '0.875rem' : '1rem',
+                fontWeight: '700',
+                color: '#666',
+              }}>
+                {currentActionIndex + 1} of {allPendingActions.length}
+              </div>
+            </div>
+
+            {allPendingActions[currentActionIndex] && (
+              <>
+                <div style={{
+                  marginBottom: '1.5rem',
+                  padding: '1rem',
+                  background: '#FFFFFF',
+                  border: '2px solid #000000',
+                  borderRadius: '0',
+                }}>
+                  <div style={{
+                    fontWeight: '700',
+                    marginBottom: '0.5rem',
+                    fontSize: isMobile ? '1rem' : '1.125rem',
+                  }}>
+                    {allPendingActions[currentActionIndex].name}
+                  </div>
+                  {allPendingActions[currentActionIndex].description && (
+                    <div style={{
+                      fontSize: isMobile ? '0.875rem' : '1rem',
+                      marginBottom: '1rem',
+                      color: '#666',
+                    }}>
+                      {allPendingActions[currentActionIndex].description}
+                    </div>
+                  )}
+                  <div style={{ marginTop: '1rem' }}>
+                    <ActionFormFields
+                      action={{
+                        ...allPendingActions[currentActionIndex],
+                        args: editedArgs[currentActionIndex] || allPendingActions[currentActionIndex].args,
+                      }}
+                      onArgsChange={(newArgs) => {
+                        const updated = [...editedArgs];
+                        updated[currentActionIndex] = newArgs;
+                        setEditedArgs(updated);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    onClick={handleApproveCurrentAction}
+                    disabled={loading}
+                    style={{
+                      ...neoStyles.button,
+                      ...buttonVariants.success,
+                      padding: isMobile ? '0.75rem 1.5rem' : '1rem 2rem',
+                      fontSize: isMobile ? '0.875rem' : '1rem',
+                      flex: 1,
+                      opacity: loading ? 0.6 : 1,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translate(0, 0)';
+                      e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                    }}
+                  >
+                    ✓ APPROVE ALL ({allPendingActions.length})
+                  </button>
+                  <button
+                    onClick={handleRejectCurrentAction}
+                    disabled={loading}
+                    style={{
+                      ...neoStyles.button,
+                      ...buttonVariants.danger,
+                      padding: isMobile ? '0.75rem 1.5rem' : '1rem 2rem',
+                      fontSize: isMobile ? '0.875rem' : '1rem',
+                      flex: 1,
+                      opacity: loading ? 0.6 : 1,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translate(0, 0)';
+                      e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                    }}
+                  >
+                    ✗ REJECT ALL
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
