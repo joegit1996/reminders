@@ -363,8 +363,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize the model with function calling
+    // Using gemini-1.5-flash for better free tier availability and performance
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-pro',
+      model: 'gemini-1.5-flash',
       tools: [{ 
         functionDeclarations: functionDefinitions as any 
       }],
