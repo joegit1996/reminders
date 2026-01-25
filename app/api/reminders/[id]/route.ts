@@ -105,6 +105,55 @@ export async function PATCH(
       return NextResponse.json(updatedReminder);
     }
 
+    if (action === 'update-automated-messages') {
+      const { automatedMessages } = body;
+
+      // Validate automated messages if provided
+      if (automatedMessages && Array.isArray(automatedMessages)) {
+        for (const msg of automatedMessages) {
+          if (!msg.days_before || !msg.title || !msg.description || !msg.webhook_url) {
+            return NextResponse.json(
+              { error: 'Automated messages must have days_before, title, description, and webhook_url' },
+              { status: 400 }
+            );
+          }
+          if (!msg.webhook_url.startsWith('https://hooks.slack.com/')) {
+            return NextResponse.json(
+              { error: 'Invalid automated message webhook URL' },
+              { status: 400 }
+            );
+          }
+          if (msg.days_before < 1) {
+            return NextResponse.json(
+              { error: 'days_before must be at least 1' },
+              { status: 400 }
+            );
+          }
+        }
+      }
+
+      const { getReminderById } = await import('@/lib/db');
+      const reminder = await getReminderById(id);
+      if (!reminder) {
+        return NextResponse.json(
+          { error: 'Reminder not found' },
+          { status: 404 }
+        );
+      }
+
+      const { data: updatedReminder, error } = await (await import('@/lib/supabase')).supabase
+        .from('reminders')
+        .update({
+          automated_messages: automatedMessages || [],
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json(updatedReminder);
+    }
+
     return NextResponse.json(
       { error: 'Invalid action' },
       { status: 400 }

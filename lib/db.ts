@@ -1,5 +1,15 @@
 import { supabase } from './supabase';
 
+export interface AutomatedMessage {
+  id: string; // Unique ID for this automated message
+  days_before: number;
+  title: string;
+  description: string;
+  webhook_url: string;
+  sent: boolean;
+  sent_at: string | null;
+}
+
 export interface Reminder {
   id: number;
   text: string;
@@ -9,6 +19,7 @@ export interface Reminder {
   slack_webhook: string;
   delay_message: string | null;
   delay_webhooks: string[];
+  automated_messages: AutomatedMessage[];
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
@@ -84,7 +95,8 @@ export async function createReminder(
   slackWebhook: string,
   description?: string | null,
   delayMessage?: string | null,
-  delayWebhooks?: string[]
+  delayWebhooks?: string[],
+  automatedMessages?: AutomatedMessage[]
 ): Promise<Reminder> {
   const { data, error } = await supabase
     .from('reminders')
@@ -96,6 +108,7 @@ export async function createReminder(
       slack_webhook: slackWebhook,
       delay_message: delayMessage || null,
       delay_webhooks: delayWebhooks || [],
+      automated_messages: automatedMessages || [],
       is_complete: false,
     })
     .select()
@@ -153,6 +166,20 @@ export async function updateReminderDueDate(
     delayMessageSent = results.sent > 0;
   }
 
+  // Reset automated messages sent status when due date is updated
+  if (updatedReminder.automated_messages && Array.isArray(updatedReminder.automated_messages)) {
+    const resetMessages = updatedReminder.automated_messages.map((msg: AutomatedMessage) => ({
+      ...msg,
+      sent: false,
+      sent_at: null,
+    }));
+
+    await supabase
+      .from('reminders')
+      .update({ automated_messages: resetMessages })
+      .eq('id', id);
+  }
+
   return {
     reminder: updatedReminder as Reminder,
     log: log as DueDateUpdateLog,
@@ -206,6 +233,72 @@ export async function getRemindersToSend(): Promise<Reminder[]> {
   });
 
   return remindersToSend;
+}
+
+// Get automated messages that need to be sent
+export async function getAutomatedMessagesToSend(): Promise<Array<{ reminder: Reminder; automatedMessage: AutomatedMessage }>> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from('reminders')
+    .select('*')
+    .eq('is_complete', false);
+
+  if (error) throw error;
+
+  const messagesToSend: Array<{ reminder: Reminder; automatedMessage: AutomatedMessage }> = [];
+
+  for (const reminder of data as Reminder[]) {
+    if (!reminder.automated_messages || !Array.isArray(reminder.automated_messages)) continue;
+
+    const dueDate = new Date(reminder.due_date);
+    dueDate.setHours(0, 0, 0, 0);
+    const daysUntilDue = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    for (const automatedMessage of reminder.automated_messages) {
+      // Only send if:
+      // 1. Not already sent
+      // 2. Days until due equals days_before
+      // 3. At least N days remaining
+      if (
+        !automatedMessage.sent &&
+        daysUntilDue === automatedMessage.days_before &&
+        daysUntilDue >= automatedMessage.days_before
+      ) {
+        messagesToSend.push({ reminder, automatedMessage });
+      }
+    }
+  }
+
+  return messagesToSend;
+}
+
+// Mark automated message as sent
+export async function markAutomatedMessageSent(
+  reminderId: number,
+  automatedMessageId: string
+): Promise<void> {
+  const reminder = await getReminderById(reminderId);
+  if (!reminder) throw new Error('Reminder not found');
+
+  const updatedMessages = reminder.automated_messages.map((msg: AutomatedMessage) => {
+    if (msg.id === automatedMessageId) {
+      return {
+        ...msg,
+        sent: true,
+        sent_at: new Date().toISOString(),
+      };
+    }
+    return msg;
+  });
+
+  const { error } = await supabase
+    .from('reminders')
+    .update({ automated_messages: updatedMessages })
+    .eq('id', reminderId);
+
+  if (error) throw error;
 }
 
 // Get update logs for a reminder

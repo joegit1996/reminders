@@ -7,6 +7,7 @@ import ReminderForm from '@/components/ReminderForm';
 import ReminderList from '@/components/ReminderList';
 import UpdateDueDateModal from '@/components/UpdateDueDateModal';
 import EditDelayMessageModal from '@/components/EditDelayMessageModal';
+import EditAutomatedMessagesModal from '@/components/EditAutomatedMessagesModal';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export interface Reminder {
@@ -18,6 +19,15 @@ export interface Reminder {
   slack_webhook: string;
   delay_message: string | null;
   delay_webhooks: string[];
+  automated_messages: Array<{
+    id: string;
+    days_before: number;
+    title: string;
+    description: string;
+    webhook_url: string;
+    sent: boolean;
+    sent_at: string | null;
+  }>;
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
@@ -29,6 +39,7 @@ export default function Home() {
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showDelayModal, setShowDelayModal] = useState(false);
+  const [showAutomatedMessagesModal, setShowAutomatedMessagesModal] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isSmallMobile = useMediaQuery('(max-width: 480px)');
 
@@ -88,6 +99,17 @@ export default function Home() {
 
   const handleDelayMessageUpdated = () => {
     setShowDelayModal(false);
+    setSelectedReminder(null);
+    fetchReminders();
+  };
+
+  const handleEditAutomatedMessages = (reminder: Reminder) => {
+    setSelectedReminder(reminder);
+    setShowAutomatedMessagesModal(true);
+  };
+
+  const handleAutomatedMessagesUpdated = () => {
+    setShowAutomatedMessagesModal(false);
     setSelectedReminder(null);
     fetchReminders();
   };
@@ -180,6 +202,7 @@ export default function Home() {
             onComplete={handleComplete}
             onUpdateDueDate={handleUpdateDueDate}
             onEditDelayMessage={handleEditDelayMessage}
+            onEditAutomatedMessages={handleEditAutomatedMessages}
           />
         )}
       </div>
@@ -203,6 +226,17 @@ export default function Home() {
             setSelectedReminder(null);
           }}
           onUpdated={handleDelayMessageUpdated}
+        />
+      )}
+
+      {showAutomatedMessagesModal && selectedReminder && (
+        <EditAutomatedMessagesModal
+          reminder={selectedReminder}
+          onClose={() => {
+            setShowAutomatedMessagesModal(false);
+            setSelectedReminder(null);
+          }}
+          onUpdated={handleAutomatedMessagesUpdated}
         />
       )}
     </main>

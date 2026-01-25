@@ -13,6 +13,15 @@ interface Reminder {
   slack_webhook: string;
   delay_message: string | null;
   delay_webhooks: string[];
+  automated_messages: Array<{
+    id: string;
+    days_before: number;
+    title: string;
+    description: string;
+    webhook_url: string;
+    sent: boolean;
+    sent_at: string | null;
+  }>;
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
@@ -29,9 +38,10 @@ interface ReminderListProps {
   onComplete: (id: number) => void;
   onUpdateDueDate: (reminder: Reminder) => void;
   onEditDelayMessage: (reminder: Reminder) => void;
+  onEditAutomatedMessages: (reminder: Reminder) => void;
 }
 
-export default function ReminderList({ reminders, onComplete, onUpdateDueDate, onEditDelayMessage }: ReminderListProps) {
+export default function ReminderList({ reminders, onComplete, onUpdateDueDate, onEditDelayMessage, onEditAutomatedMessages }: ReminderListProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isSmallMobile = useMediaQuery('(max-width: 480px)');
   const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
@@ -194,6 +204,23 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                         {isSmallMobile ? 'Edit Delay' : 'Edit Delay Message'}
                       </button>
                       <button
+                        onClick={() => onEditAutomatedMessages(reminder)}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: isMobile ? '0.75rem' : '0.875rem',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          flex: isSmallMobile ? '1' : '0',
+                          minWidth: isSmallMobile ? '0' : 'auto',
+                        }}
+                      >
+                        {isSmallMobile ? 'Auto Msgs' : 'Automated Messages'}
+                      </button>
+                      <button
                         onClick={() => onComplete(reminder.id)}
                         style={{
                           padding: '0.5rem 1rem',
@@ -229,6 +256,11 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
               <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.5rem' }}>
                 🔗 Webhook: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
               </div>
+              {reminder.automated_messages && reminder.automated_messages.length > 0 && (
+                <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.25rem' }}>
+                  🤖 {reminder.automated_messages.length} automated message{reminder.automated_messages.length !== 1 ? 's' : ''} configured
+                </div>
+              )}
             </div>
           );
         })}

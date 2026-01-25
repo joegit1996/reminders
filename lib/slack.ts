@@ -105,3 +105,44 @@ export async function sendDelayMessage(
 
   return results;
 }
+
+// Send automated message
+export async function sendAutomatedMessage(
+  title: string,
+  description: string,
+  webhookUrl: string
+): Promise<boolean> {
+  try {
+    const message = {
+      text: title,
+      blocks: [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*${title}*\n\n${description}`,
+          },
+        },
+      ],
+    };
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Slack API error: ${response.status} - ${errorText}`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error sending automated message:', error);
+    return false;
+  }
+}
