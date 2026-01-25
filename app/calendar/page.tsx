@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import Link from 'next/link';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
 
 interface Reminder {
   id: number;
@@ -108,13 +109,10 @@ export default function CalendarPage() {
     return (
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '1rem' : '2rem', width: '100%' }}>
         <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '2rem',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+          ...neoStyles.card,
           textAlign: 'center',
         }}>
-          <p style={{ color: '#666' }}>Loading calendar...</p>
+          <p style={{ color: '#000000', fontWeight: '700' }}>LOADING CALENDAR...</p>
         </div>
       </main>
     );
@@ -123,10 +121,7 @@ export default function CalendarPage() {
   return (
     <main style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '1rem' : '2rem', width: '100%' }}>
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: isMobile ? '1rem' : '2rem',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+        ...neoStyles.card,
         marginBottom: '2rem',
       }}>
         <div style={{ 
@@ -140,33 +135,38 @@ export default function CalendarPage() {
           <div>
             <h1 style={{
               fontSize: isMobile ? '1.75rem' : '2.5rem',
-              fontWeight: 'bold',
+              fontWeight: '900',
               marginBottom: '0.5rem',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: '#000000',
+              textTransform: 'uppercase',
+              letterSpacing: '-0.02em',
             }}>
-              📅 Calendar View
+              📅 CALENDAR VIEW
             </h1>
-            <p style={{ color: '#666', fontSize: isMobile ? '0.875rem' : '1rem' }}>
+            <p style={{ color: '#000000', fontSize: isMobile ? '0.875rem' : '1rem', fontWeight: '600' }}>
               View all reminders by due date
             </p>
           </div>
           <Link
             href="/"
             style={{
+              ...neoStyles.button,
+              ...buttonVariants.neutral,
               padding: '0.75rem 1.5rem',
-              background: '#e5e7eb',
-              color: '#374151',
-              textDecoration: 'none',
-              borderRadius: '6px',
-              fontWeight: '500',
               fontSize: '0.9rem',
               alignSelf: isMobile ? 'stretch' : 'auto',
               textAlign: 'center',
+              textDecoration: 'none',
+            }}
+            onMouseEnter={(e) => {
+              Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translate(0, 0)';
+              e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
             }}
           >
-            ← Back to Reminders
+            ← BACK TO REMINDERS
           </Link>
         </div>
 
@@ -183,12 +183,17 @@ export default function CalendarPage() {
             <button
               onClick={goToPreviousMonth}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.neutral,
                 padding: '0.5rem 1rem',
-                background: '#e5e7eb',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
                 fontSize: '1rem',
+              }}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
               }}
             >
               ←
@@ -196,27 +201,35 @@ export default function CalendarPage() {
             <button
               onClick={goToToday}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.primary,
                 padding: '0.5rem 1rem',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
                 fontSize: isMobile ? '0.875rem' : '1rem',
-                fontWeight: '500',
+              }}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
               }}
             >
-              Today
+              TODAY
             </button>
             <button
               onClick={goToNextMonth}
               style={{
+                ...neoStyles.button,
+                ...buttonVariants.neutral,
                 padding: '0.5rem 1rem',
-                background: '#e5e7eb',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
                 fontSize: '1rem',
+              }}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
               }}
             >
               →
@@ -225,30 +238,36 @@ export default function CalendarPage() {
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <h2 style={{
               fontSize: isMobile ? '1.25rem' : '1.5rem',
-              fontWeight: '600',
+              fontWeight: '900',
               margin: 0,
+              color: '#000000',
+              textTransform: 'uppercase',
             }}>
-              {format(currentDate, 'MMMM yyyy')}
+              {format(currentDate, 'MMMM yyyy').toUpperCase()}
             </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <label htmlFor="webhookFilter" style={{
                 fontSize: isMobile ? '0.875rem' : '1rem',
-                fontWeight: '500',
-                color: '#374151',
+                fontWeight: '700',
+                color: '#000000',
               }}>
-                Filter:
+                FILTER:
               </label>
               <select
                 id="webhookFilter"
                 value={selectedWebhookFilter}
                 onChange={(e) => setSelectedWebhookFilter(e.target.value)}
                 style={{
+                  ...neoStyles.input,
                   padding: '0.5rem 1rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
                   fontSize: isMobile ? '0.875rem' : '1rem',
-                  background: 'white',
                   cursor: 'pointer',
+                }}
+                onFocus={(e) => {
+                  e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                }}
+                onBlur={(e) => {
+                  e.target.style.boxShadow = 'none';
                 }}
               >
                 <option value="all">All Webhooks</option>
