@@ -1016,12 +1016,30 @@ User: "create reminder for youssef about X"
             // Combine all read results (from first call and follow-up)
             const allReadResults = [...functionResults, ...followUpReadResults];
 
+            // Combine write operations from original response and follow-up
+            // The responseMessage should contain ALL tool_calls (both original and follow-up)
+            const combinedToolCalls = [
+              ...(responseMessage.tool_calls || []).filter((tc: any) => {
+                const funcName = tc.type === 'function' ? tc.function?.name : null;
+                return funcName && !readOnlyOperations.includes(funcName);
+              }),
+              ...followUpWriteOperations,
+            ];
+
+            // Create a combined response message with all write operations
+            const combinedResponseMessage = {
+              ...finalResponseMessage,
+              tool_calls: combinedToolCalls.length > 0 ? combinedToolCalls : finalResponseMessage.tool_calls,
+            };
+
+            console.log('[AGENT] Combined write operations:', combinedToolCalls.length, 'pendingActions:', pendingActions.length);
+
             // Store the response message for later execution
             return NextResponse.json({
               response: finalResponseMessage.content || 'I need your approval to proceed with the following actions:',
               pendingActions: pendingActions,
               requiresApproval: true,
-              responseMessage: finalResponseMessage,
+              responseMessage: combinedResponseMessage,
               readResults: allReadResults,
             });
           }
