@@ -742,28 +742,64 @@ User: "create reminder for youssef about X"
           console.log('[AGENT] First function result content preview:', functionResults[0].content?.substring(0, 200));
         }
 
+        // Retry logic for API calls (up to 3 attempts)
         let finalCompletion;
-        try {
-          finalCompletion = await openai.chat.completions.create({
-            model: modelName,
-            messages: finalMessages as any,
-            tools: functionDefinitions.map(fn => ({
-              type: 'function',
-              function: {
-                name: fn.name,
-                description: fn.description,
-                parameters: fn.parameters,
-              },
-            })),
-            tool_choice: 'auto',
-            stream: false,
-          });
-        } catch (apiError: any) {
-          console.error('[AGENT] Error in follow-up API call:', apiError);
-          console.error('[AGENT] Error details:', JSON.stringify(apiError, null, 2));
-          // Return a helpful error message
+        let lastError: any = null;
+        const maxRetries = 3;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            finalCompletion = await openai.chat.completions.create({
+              model: modelName,
+              messages: finalMessages as any,
+              tools: functionDefinitions.map(fn => ({
+                type: 'function',
+                function: {
+                  name: fn.name,
+                  description: fn.description,
+                  parameters: fn.parameters,
+                },
+              })),
+              tool_choice: 'auto',
+              stream: false,
+            });
+            // Success, break out of retry loop
+            break;
+          } catch (apiError: any) {
+            lastError = apiError;
+            const isRetryable = apiError?.status === 502 || apiError?.status === 503 || apiError?.status === 504;
+            
+            if (isRetryable && attempt < maxRetries) {
+              const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+              console.log(`[AGENT] API call failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            } else {
+              // Not retryable or max retries reached
+              console.error('[AGENT] Error in follow-up API call:', apiError);
+              console.error('[AGENT] Error details:', JSON.stringify(apiError, null, 2));
+              
+              // If it's a 502/503/504 and we've exhausted retries, return a helpful message
+              if (isRetryable) {
+                return NextResponse.json({
+                  response: 'The AI service is temporarily unavailable. Please try again in a moment.',
+                  functionCalls: functionCallsData,
+                });
+              }
+              
+              // For other errors, return a generic error message
+              return NextResponse.json({
+                response: 'Sorry, I encountered an error processing the webhook information. Please try again.',
+                functionCalls: functionCallsData,
+              });
+            }
+          }
+        }
+        
+        // If we exhausted retries and still no success
+        if (!finalCompletion) {
           return NextResponse.json({
-            response: 'Sorry, I encountered an error processing the webhook information. Please try again.',
+            response: 'The AI service is temporarily unavailable. Please try again in a moment.',
             functionCalls: functionCallsData,
           });
         }
