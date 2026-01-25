@@ -215,6 +215,9 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
     }
 
     const inputType = fieldType === 'number' ? 'number' : fieldType === 'date' || key.toLowerCase().includes('date') ? 'date' : 'text';
+    
+    // Check if this is a webhook field
+    const isWebhookField = key.toLowerCase().includes('webhook') || key.toLowerCase().includes('slack');
 
     return (
       <div key={key} style={{ marginBottom: '1rem' }}>
