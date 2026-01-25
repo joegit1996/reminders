@@ -8,7 +8,6 @@ import ReminderList from '@/components/ReminderList';
 import UpdateDueDateModal from '@/components/UpdateDueDateModal';
 import EditDelayMessageModal from '@/components/EditDelayMessageModal';
 import EditAutomatedMessagesModal from '@/components/EditAutomatedMessagesModal';
-import AgentChat from '@/components/AgentChat';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export interface Reminder {
@@ -154,6 +153,33 @@ export default function Home() {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Link
+            href="/agent"
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#95E1D3',
+              color: '#000000',
+              textDecoration: 'none',
+              borderRadius: '0',
+              border: '3px solid #000000',
+              fontWeight: '700',
+              fontSize: '0.9rem',
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              boxShadow: '4px 4px 0px 0px #000000',
+              transition: 'all 0.1s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translate(2px, 2px)';
+              e.currentTarget.style.boxShadow = '2px 2px 0px 0px #000000';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translate(0, 0)';
+              e.currentTarget.style.boxShadow = '4px 4px 0px 0px #000000';
+            }}
+          >
+            🤖 AI ASSISTANT
+          </Link>
+          <Link
             href="/calendar"
             style={{
               padding: '0.75rem 1.5rem',
@@ -210,17 +236,6 @@ export default function Home() {
           </div>
         </div>
         <ReminderForm onReminderCreated={handleReminderCreated} />
-      </div>
-
-      <div style={{
-        background: '#FFFFFF',
-        borderRadius: '0',
-        padding: isMobile ? '1.5rem' : '2rem',
-        border: '4px solid #000000',
-        boxShadow: '8px 8px 0px 0px #000000',
-        marginBottom: isMobile ? '1.5rem' : '2rem',
-      }}>
-        <AgentChat onReminderUpdated={fetchReminders} />
       </div>
 
       <div style={{
