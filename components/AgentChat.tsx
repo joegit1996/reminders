@@ -297,7 +297,19 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         }
       } else {
         // Move to next action
+        console.log('[FRONTEND] Moving to next action:', nextActionIndex, 'of', allPendingActions.length);
+        console.log('[FRONTEND] Next action args:', allPendingActions[nextActionIndex]?.args);
         setCurrentActionIndex(nextActionIndex);
+        
+        // Ensure editedArgs has the next action's args initialized
+        setEditedArgs(prev => {
+          const updated = [...prev];
+          if (updated[nextActionIndex] === undefined) {
+            updated[nextActionIndex] = JSON.parse(JSON.stringify(allPendingActions[nextActionIndex].args || {}));
+            console.log('[FRONTEND] Initialized args for next action:', updated[nextActionIndex]);
+          }
+          return updated;
+        });
         
         // Update message to show progress
         setMessages(prev => {
@@ -408,11 +420,17 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         setMessages(prev => [...prev, newMessage]);
         
         // Show approval modal with ALL pending actions
+        console.log('[FRONTEND] Setting up modal with actions:', data.pendingActions.map((a: PendingAction) => ({ name: a.name, args: a.args })));
         setAllPendingActions(data.pendingActions);
         setCurrentMessageIndex(messages.length); // Index of the new message
         setCurrentActionIndex(0);
         setCurrentResponseMessage(data.responseMessage);
-        setEditedArgs(data.pendingActions.map((a: PendingAction) => ({ ...a.args })));
+        // Initialize editedArgs with a deep copy of each action's args
+        setEditedArgs(data.pendingActions.map((a: PendingAction) => {
+          const argsCopy = JSON.parse(JSON.stringify(a.args || {}));
+          console.log('[FRONTEND] Initializing args for action:', a.name, argsCopy);
+          return argsCopy;
+        }));
         setShowApprovalModal(true);
       } else {
         setMessages(prev => [...prev, {
@@ -664,13 +682,17 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
                   )}
                   <div style={{ marginTop: '1rem' }}>
                     <ActionFormFields
+                      key={`action-${currentActionIndex}-${allPendingActions[currentActionIndex].id}`}
                       action={{
                         ...allPendingActions[currentActionIndex],
-                        args: editedArgs[currentActionIndex] || allPendingActions[currentActionIndex].args,
+                        args: editedArgs[currentActionIndex] !== undefined 
+                          ? editedArgs[currentActionIndex] 
+                          : JSON.parse(JSON.stringify(allPendingActions[currentActionIndex].args || {})),
                       }}
                       onArgsChange={(newArgs) => {
+                        console.log('[FRONTEND] Updating args for action index:', currentActionIndex, 'newArgs:', newArgs);
                         const updated = [...editedArgs];
-                        updated[currentActionIndex] = newArgs;
+                        updated[currentActionIndex] = JSON.parse(JSON.stringify(newArgs));
                         setEditedArgs(updated);
                       }}
                     />
