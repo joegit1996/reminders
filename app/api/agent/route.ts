@@ -560,17 +560,31 @@ User: "create reminder for youssef about X"
         
         // Separate read and write operations
         const allToolCalls = responseMessage.tool_calls.filter((tc: any) => tc.type === 'function');
+        console.log('[AGENT] Total tool calls:', allToolCalls.length);
+        
         const writeOperations = allToolCalls.filter((tc: any) => {
           const funcName = tc.type === 'function' ? tc.function?.name : null;
-          return funcName && !readOnlyOperations.includes(funcName);
+          const isWrite = funcName && !readOnlyOperations.includes(funcName);
+          if (isWrite) {
+            console.log('[AGENT] Write operation detected:', funcName);
+          }
+          return isWrite;
         });
         const readOperations = allToolCalls.filter((tc: any) => {
           const funcName = tc.type === 'function' ? tc.function?.name : null;
-          return funcName && readOnlyOperations.includes(funcName);
+          const isRead = funcName && readOnlyOperations.includes(funcName);
+          if (isRead) {
+            console.log('[AGENT] Read operation detected:', funcName);
+          }
+          return isRead;
         });
+        
+        console.log('[AGENT] Write operations:', writeOperations.length, 'Read operations:', readOperations.length);
 
         // If there are write operations, require approval
         if (writeOperations.length > 0) {
+          console.log('[AGENT] REQUIRING APPROVAL for', writeOperations.length, 'write operation(s)');
+          
           const pendingActions = writeOperations.map((tc: any) => {
             const funcName = tc.type === 'function' ? tc.function?.name : '';
             const funcDef = functionDefinitions.find(fn => fn.name === funcName);
