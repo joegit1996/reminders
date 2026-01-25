@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -467,5 +467,25 @@ function PublicCalendarContent() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function PublicCalendarPage() {
+  return (
+    <Suspense fallback={
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', width: '100%' }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+          textAlign: 'center',
+        }}>
+          <p style={{ color: '#666' }}>Loading calendar...</p>
+        </div>
+      </main>
+    }>
+      <PublicCalendarContent />
+    </Suspense>
   );
 }
