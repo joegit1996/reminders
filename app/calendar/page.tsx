@@ -41,6 +41,46 @@ export default function CalendarPage() {
     fetchData();
   }, []);
 
+  // Close selected date on scroll (mobile only)
+  useEffect(() => {
+    if (!isMobile || !selectedDate) return;
+
+    const handleScroll = () => {
+      setSelectedDate(null);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isMobile, selectedDate]);
+
+  // Close selected date when clicking outside (mobile only)
+  useEffect(() => {
+    if (!isMobile || !selectedDate) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Check if click is outside the selected date details section
+      const selectedDateSection = document.querySelector('[data-selected-date-section]');
+      if (selectedDateSection && !selectedDateSection.contains(target)) {
+        // Don't close if clicking on calendar cells
+        const calendarCell = target.closest('[data-calendar-cell]');
+        if (!calendarCell) {
+          setSelectedDate(null);
+        }
+      }
+    };
+
+    // Add a small delay to avoid immediate closure when opening
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isMobile, selectedDate]);
+
   const fetchData = async () => {
     try {
       const [remindersRes, webhooksRes] = await Promise.all([
@@ -329,6 +369,7 @@ export default function CalendarPage() {
             return (
               <div
                 key={idx}
+                data-calendar-cell
                 onClick={() => setSelectedDate(day)}
                 style={{
                   minHeight: isMobile ? '50px' : '100px',
@@ -481,14 +522,17 @@ export default function CalendarPage() {
 
         {/* Selected Date Details */}
         {selectedDate && (
-          <div style={{
-            marginTop: '2rem',
-            padding: '1.5rem',
-            background: '#FFFFFF',
-            borderRadius: '0',
-            border: '4px solid #000000',
-            boxShadow: '8px 8px 0px 0px #000000',
-          }}>
+          <div 
+            data-selected-date-section
+            style={{
+              marginTop: '2rem',
+              padding: '1.5rem',
+              background: '#FFFFFF',
+              borderRadius: '0',
+              border: '4px solid #000000',
+              boxShadow: '8px 8px 0px 0px #000000',
+            }}
+          >
             <h3 style={{
               fontSize: '1.25rem',
               fontWeight: '900',
