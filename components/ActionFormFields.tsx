@@ -254,7 +254,7 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
   }
 
   return (
-    <div>
+    <div style={{ maxWidth: '100%', overflow: 'visible' }}>
       {Object.keys(action.parameters.properties).map((key) =>
         renderField(key, action.parameters, localArgs[key] || '')
       )}

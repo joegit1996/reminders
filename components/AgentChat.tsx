@@ -362,6 +362,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
       <div style={{
         flex: 1,
         overflowY: 'auto',
+        overflowX: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         gap: '1rem',
@@ -370,6 +371,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
         background: '#F9FAFB',
         border: '2px solid #000000',
         borderRadius: '0',
+        minHeight: 0, // Important for flex scrolling
       }}>
         {messages.map((msg, idx) => (
           <div
