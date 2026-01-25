@@ -62,9 +62,19 @@ export default function CalendarPage() {
       // Check if click is outside the selected date details section
       const selectedDateSection = document.querySelector('[data-selected-date-section]');
       if (selectedDateSection && !selectedDateSection.contains(target)) {
-        // Don't close if clicking on calendar cells
+        // Don't close if clicking on calendar cells (they handle their own click)
         const calendarCell = target.closest('[data-calendar-cell]');
-        if (!calendarCell) {
+        const calendarGrid = target.closest('[data-calendar-grid]');
+        // Don't close if clicking on navigation buttons or filter
+        const navButton = target.closest('button');
+        const isNavButton = navButton && (
+          navButton.textContent?.includes('←') || 
+          navButton.textContent?.includes('→') || 
+          navButton.textContent?.includes('TODAY') ||
+          navButton.textContent?.includes('BACK')
+        );
+        
+        if (!calendarCell && !calendarGrid && !isNavButton) {
           setSelectedDate(null);
         }
       }
@@ -330,13 +340,16 @@ export default function CalendarPage() {
         </div>
 
         {/* Calendar Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: isMobile ? '0.25rem' : '0.5rem',
-          width: '100%',
-          overflowX: 'auto',
-        }}>
+        <div 
+          data-calendar-grid
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            gap: isMobile ? '0.25rem' : '0.5rem',
+            width: '100%',
+            overflowX: 'auto',
+          }}
+        >
           {/* Day Headers */}
           {dayNames.map(day => (
             <div
