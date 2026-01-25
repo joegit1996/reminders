@@ -360,18 +360,12 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
 
       {/* Messages */}
       <div 
-        ref={(el) => {
-          if (el) {
-            // Ensure scroll container is properly set up
-            el.style.overflowY = 'auto';
-            el.style.overflowX = 'hidden';
-            (el.style as any).WebkitOverflowScrolling = 'touch';
-          }
-        }}
+        ref={messagesContainerRef}
         style={{
-          flex: '1 1 auto',
-          overflowY: 'auto',
+          flex: '1 1 0',
+          overflowY: 'scroll',
           overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch' as any,
           display: 'flex',
           flexDirection: 'column',
           gap: '1rem',
@@ -381,9 +375,6 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           border: '2px solid #000000',
           borderRadius: '0',
           minHeight: 0,
-          maxHeight: '100%',
-          position: 'relative',
-          zIndex: 1,
         }}
       >
         {messages.map((msg, idx) => (
@@ -393,7 +384,6 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
               alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
               maxWidth: '85%',
               width: '100%',
-              flexShrink: 0,
             }}
           >
             <div style={{
@@ -421,15 +411,6 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
                   borderRadius: '0',
                   boxShadow: '4px 4px 0px #000000',
                   width: '100%',
-                  flexShrink: 0,
-                  position: 'relative',
-                  zIndex: 0,
-                }}
-                onWheel={(e) => {
-                  // Don't stop propagation - allow parent to scroll
-                }}
-                onTouchMove={(e) => {
-                  // Don't stop propagation - allow parent to scroll
                 }}
               >
                 <div style={{
