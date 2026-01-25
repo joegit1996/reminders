@@ -330,6 +330,15 @@ export default function CalendarPage() {
                     {dayReminders.slice(0, isMobile ? 1 : 2).map(reminder => (
                       <div
                         key={reminder.id}
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoveredReminder({
+                            reminder,
+                            x: rect.left,
+                            y: rect.top,
+                          });
+                        }}
+                        onMouseLeave={() => setHoveredReminder(null)}
                         style={{
                           fontSize: isMobile ? '0.65rem' : '0.75rem',
                           padding: '0.25rem 0.5rem',
@@ -340,8 +349,9 @@ export default function CalendarPage() {
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                           fontWeight: '500',
+                          cursor: 'pointer',
+                          position: 'relative',
                         }}
-                        title={reminder.text}
                       >
                         {reminder.text.substring(0, isMobile ? 8 : 15)}...
                       </div>
