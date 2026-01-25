@@ -391,10 +391,9 @@ export async function POST(request: NextRequest) {
       content: message,
     });
 
-    // Use Qwen 2.5 7B Instruct model from OpenRouter (supports function calling)
-    // Very low cost: $0.00000004 per prompt token, $0.0000001 per completion token
-    // This model supports tool use which is required for function calling
-    const modelName = 'qwen/qwen-2.5-7b-instruct';
+    // Use Qwen3 Coder free model from OpenRouter (supports function calling)
+    // Free tier model that supports tool use which is required for function calling
+    const modelName = 'qwen/qwen3-coder:free';
 
     try {
       const completion = await openai.chat.completions.create({
