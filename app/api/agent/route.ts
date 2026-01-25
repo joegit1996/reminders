@@ -387,8 +387,8 @@ export async function POST(request: NextRequest) {
     const { message, conversationHistory = [], approveActions, pendingActionId, responseMessage: storedResponseMessage } = body;
 
     // Model configuration with fallback
-    const primaryModel = 'meta-llama/llama-3.3-70b-instruct:free';
-    const fallbackModel = 'glm-4.5-air:free';
+    const primaryModel = 'glm-4.5-air:free';
+    const fallbackModel = 'meta-llama/llama-3.3-70b-instruct:free';
     
     // Helper function to try API call with fallback models
     async function callWithFallback(
