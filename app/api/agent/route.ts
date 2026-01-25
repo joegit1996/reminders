@@ -520,30 +520,38 @@ export async function POST(request: NextRequest) {
         
         // Separate read and write operations
         const allToolCalls = responseMessage.tool_calls.filter((tc: any) => tc.type === 'function');
-        const writeOperations = allToolCalls.filter((tc: any) => !readOnlyOperations.includes(tc.function.name));
-        const readOperations = allToolCalls.filter((tc: any) => readOnlyOperations.includes(tc.function.name));
+        const writeOperations = allToolCalls.filter((tc: any) => {
+          const funcName = tc.type === 'function' ? tc.function?.name : null;
+          return funcName && !readOnlyOperations.includes(funcName);
+        });
+        const readOperations = allToolCalls.filter((tc: any) => {
+          const funcName = tc.type === 'function' ? tc.function?.name : null;
+          return funcName && readOnlyOperations.includes(funcName);
+        });
 
         // If there are write operations, require approval
         if (writeOperations.length > 0) {
           const pendingActions = writeOperations.map((tc: any) => ({
             id: tc.id,
-            name: tc.function.name,
-            args: JSON.parse(tc.function.arguments || '{}'),
-            description: functionDefinitions.find(fn => fn.name === tc.function.name)?.description || '',
+            name: tc.type === 'function' ? tc.function?.name : '',
+            args: JSON.parse((tc.type === 'function' ? tc.function?.arguments : '{}') || '{}'),
+            description: functionDefinitions.find(fn => fn.name === (tc.type === 'function' ? tc.function?.name : ''))?.description || '',
             toolCall: tc, // Store full tool call for execution
           }));
 
           // Execute read operations immediately (no approval needed)
           const readResults = [];
           for (const toolCall of readOperations) {
-            const functionName = toolCall.function.name;
-            const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
-            const functionResult = await executeFunction(functionName, functionArgs);
-            readResults.push({
-              role: 'tool' as const,
-              tool_call_id: toolCall.id,
-              content: JSON.stringify(functionResult),
-            });
+            if (toolCall.type === 'function') {
+              const functionName = toolCall.function.name;
+              const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+              const functionResult = await executeFunction(functionName, functionArgs);
+              readResults.push({
+                role: 'tool' as const,
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(functionResult),
+              });
+            }
           }
 
           // Store the response message for later execution
@@ -560,21 +568,23 @@ export async function POST(request: NextRequest) {
         const functionCallsData: Array<{ name: string; args: any }> = [];
         
         for (const toolCall of allToolCalls) {
-          const functionName = toolCall.function.name;
-          const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
-          
-          // Execute the function
-          const functionResult = await executeFunction(functionName, functionArgs);
-          functionResults.push({
-            role: 'tool' as const,
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(functionResult),
-          });
-          
-          functionCallsData.push({
-            name: functionName,
-            args: functionArgs,
-          });
+          if (toolCall.type === 'function') {
+            const functionName = toolCall.function.name;
+            const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+            
+            // Execute the function
+            const functionResult = await executeFunction(functionName, functionArgs);
+            functionResults.push({
+              role: 'tool' as const,
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(functionResult),
+            });
+            
+            functionCallsData.push({
+              name: functionName,
+              args: functionArgs,
+            });
+          }
         }
 
         // Add function results to messages and get final response
