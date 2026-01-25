@@ -359,20 +359,32 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
       </h2>
 
       {/* Messages */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-        padding: '0.5rem',
-        marginBottom: '1rem',
-        background: '#F9FAFB',
-        border: '2px solid #000000',
-        borderRadius: '0',
-        minHeight: 0, // Important for flex scrolling
-      }}>
+      <div 
+        ref={(el) => {
+          if (el) {
+            // Ensure scroll container is properly set up
+            el.style.overflowY = 'auto';
+            el.style.overflowX = 'hidden';
+            el.style.WebkitOverflowScrolling = 'touch';
+          }
+        }}
+        style={{
+          flex: '1 1 auto',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+          padding: '0.5rem',
+          marginBottom: '1rem',
+          background: '#F9FAFB',
+          border: '2px solid #000000',
+          borderRadius: '0',
+          minHeight: 0,
+          maxHeight: '100%',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
         {messages.map((msg, idx) => (
           <div
             key={idx}
