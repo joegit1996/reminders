@@ -119,7 +119,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <main style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '1rem' : '2rem', width: '100%' }}>
+    <main style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '0.5rem' : '2rem', width: '100%', overflowX: 'hidden' }}>
       <div style={{
         ...neoStyles.card,
         marginBottom: '2rem',
@@ -285,23 +285,27 @@ export default function CalendarPage() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: '0.5rem',
+          gap: isMobile ? '0.25rem' : '0.5rem',
+          width: '100%',
+          overflowX: 'auto',
         }}>
           {/* Day Headers */}
           {dayNames.map(day => (
             <div
               key={day}
               style={{
-                padding: '0.75rem',
+                padding: isMobile ? '0.5rem 0.25rem' : '0.75rem',
                 textAlign: 'center',
                 fontWeight: '900',
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                fontSize: isMobile ? '0.65rem' : '0.875rem',
                 color: '#000000',
                 background: '#FFFFFF',
-                border: '3px solid #000000',
+                border: isMobile ? '2px solid #000000' : '3px solid #000000',
                 borderRadius: '0',
-                boxShadow: '4px 4px 0px 0px #000000',
+                boxShadow: isMobile ? '2px 2px 0px 0px #000000' : '4px 4px 0px 0px #000000',
                 textTransform: 'uppercase',
+                minWidth: 0,
+                overflow: 'hidden',
               }}
             >
               {day}
@@ -319,23 +323,33 @@ export default function CalendarPage() {
                 key={idx}
                 onClick={() => setSelectedDate(day)}
                 style={{
-                  minHeight: isMobile ? '60px' : '100px',
-                  padding: '0.5rem',
-                  border: `3px solid ${isToday ? '#4ECDC4' : '#000000'}`,
+                  minHeight: isMobile ? '50px' : '100px',
+                  padding: isMobile ? '0.25rem' : '0.5rem',
+                  border: isMobile ? `2px solid ${isToday ? '#4ECDC4' : '#000000'}` : `3px solid ${isToday ? '#4ECDC4' : '#000000'}`,
                   borderRadius: '0',
                   background: isCurrentMonth ? '#FFFFFF' : '#FFFFFF',
-                  boxShadow: isToday ? '4px 4px 0px 0px #4ECDC4' : '4px 4px 0px 0px #000000',
+                  boxShadow: isToday 
+                    ? (isMobile ? '2px 2px 0px 0px #4ECDC4' : '4px 4px 0px 0px #4ECDC4')
+                    : (isMobile ? '2px 2px 0px 0px #000000' : '4px 4px 0px 0px #000000'),
                   cursor: 'pointer',
                   opacity: isCurrentMonth ? 1 : 0.6,
                   position: 'relative',
+                  minWidth: 0,
+                  overflow: 'hidden',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translate(2px, 2px)';
-                  e.currentTarget.style.boxShadow = isToday ? '2px 2px 0px 0px #4ECDC4' : '2px 2px 0px 0px #000000';
+                  if (!isMobile) {
+                    e.currentTarget.style.transform = 'translate(2px, 2px)';
+                    e.currentTarget.style.boxShadow = isToday ? '2px 2px 0px 0px #4ECDC4' : '2px 2px 0px 0px #000000';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translate(0, 0)';
-                  e.currentTarget.style.boxShadow = isToday ? '4px 4px 0px 0px #4ECDC4' : '4px 4px 0px 0px #000000';
+                  if (!isMobile) {
+                    e.currentTarget.style.transform = 'translate(0, 0)';
+                    e.currentTarget.style.boxShadow = isToday 
+                      ? (isMobile ? '2px 2px 0px 0px #4ECDC4' : '4px 4px 0px 0px #4ECDC4')
+                      : (isMobile ? '2px 2px 0px 0px #000000' : '4px 4px 0px 0px #000000');
+                  }
                 }}
               >
                 <div style={{
@@ -365,11 +379,11 @@ export default function CalendarPage() {
                         }}
                         onMouseLeave={() => setHoveredReminder(null)}
                         style={{
-                          fontSize: isMobile ? '0.65rem' : '0.75rem',
-                          padding: '0.25rem 0.5rem',
+                          fontSize: isMobile ? '0.6rem' : '0.75rem',
+                          padding: isMobile ? '0.15rem 0.25rem' : '0.25rem 0.5rem',
                           background: '#4ECDC4',
                           color: '#000000',
-                          border: '2px solid #000000',
+                          border: isMobile ? '1px solid #000000' : '2px solid #000000',
                           borderRadius: '0',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -377,6 +391,7 @@ export default function CalendarPage() {
                           fontWeight: '700',
                           cursor: 'pointer',
                           position: 'relative',
+                          lineHeight: '1.2',
                         }}
                       >
                         {reminder.text.substring(0, isMobile ? 8 : 15)}...
