@@ -267,7 +267,10 @@ async function executeFunction(name: string, args: any) {
     case 'list_webhooks':
       const webhooksRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/webhooks`);
       const webhooks = await webhooksRes.json();
-      return { webhooks };
+      return { 
+        webhooks,
+        message: `Found ${webhooks.length} saved webhooks. Available webhooks: ${webhooks.map((w: any) => `"${w.name}" (${w.webhook_url})`).join(', ')}`
+      };
     
     case 'search_reminders':
       const allRemindersForSearch = await getAllReminders();
