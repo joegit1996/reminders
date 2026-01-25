@@ -53,44 +53,6 @@ export default function CalendarPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isMobile, selectedDate]);
 
-  // Close selected date when clicking outside (mobile only)
-  useEffect(() => {
-    if (!isMobile || !selectedDate) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      // Check if click is outside the selected date details section
-      const selectedDateSection = document.querySelector('[data-selected-date-section]');
-      if (selectedDateSection && !selectedDateSection.contains(target)) {
-        // Don't close if clicking on calendar cells (they handle their own click)
-        const calendarCell = target.closest('[data-calendar-cell]');
-        const calendarGrid = target.closest('[data-calendar-grid]');
-        // Don't close if clicking on navigation buttons or filter
-        const navButton = target.closest('button');
-        const isNavButton = navButton && (
-          navButton.textContent?.includes('←') || 
-          navButton.textContent?.includes('→') || 
-          navButton.textContent?.includes('TODAY') ||
-          navButton.textContent?.includes('BACK')
-        );
-        
-        if (!calendarCell && !calendarGrid && !isNavButton) {
-          setSelectedDate(null);
-        }
-      }
-    };
-
-    // Add a small delay to avoid immediate closure when opening
-    const timeoutId = setTimeout(() => {
-      document.addEventListener('click', handleClickOutside);
-    }, 100);
-
-    return () => {
-      clearTimeout(timeoutId);
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [isMobile, selectedDate]);
-
   const fetchData = async () => {
     try {
       const [remindersRes, webhooksRes] = await Promise.all([
@@ -533,100 +495,135 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {/* Selected Date Details */}
+        {/* Selected Date Details Modal */}
         {selectedDate && (
-          <div 
+          <div
             data-selected-date-section
             style={{
-              marginTop: '2rem',
-              padding: '1.5rem',
-              background: '#FFFFFF',
-              borderRadius: '0',
-              border: '4px solid #000000',
-              boxShadow: '8px 8px 0px 0px #000000',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: neoStyles.modalOverlay.background,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: isMobile ? '1rem' : '2rem',
+            }}
+            onClick={(e) => {
+              // Close when clicking the overlay
+              if (e.target === e.currentTarget) {
+                setSelectedDate(null);
+              }
             }}
           >
-            <h3 style={{
-              fontSize: '1.25rem',
-              fontWeight: '900',
-              marginBottom: '1rem',
-              color: '#000000',
-              textTransform: 'uppercase',
-            }}>
-              REMINDERS FOR {format(selectedDate, 'MMMM dd, yyyy').toUpperCase()}
-            </h3>
-            {getRemindersForDate(selectedDate).length === 0 ? (
-              <p style={{ color: '#000000', fontWeight: '700' }}>NO REMINDERS FOR THIS DATE{selectedWebhookFilter !== 'all' ? ` WITH SELECTED WEBHOOK FILTER` : ''}</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {getRemindersForDate(selectedDate).map(reminder => (
-                  <div
-                    key={reminder.id}
-                    style={{
-                      padding: '1rem',
-                      background: '#FFFFFF',
-                      borderRadius: '0',
-                      border: '3px solid #000000',
-                      boxShadow: '4px 4px 0px 0px #000000',
-                    }}
-                  >
-                    <div style={{
-                      fontSize: '1rem',
-                      fontWeight: '900',
-                      marginBottom: '0.5rem',
-                      color: '#000000',
-                      textTransform: 'uppercase',
-                    }}>
-                      {reminder.text}
-                    </div>
-                    {reminder.description && (
+            <div
+              style={{
+                background: neoStyles.modalContent.background,
+                border: neoStyles.modalContent.border,
+                borderRadius: neoStyles.modalContent.borderRadius,
+                boxShadow: neoStyles.modalContent.boxShadow,
+                padding: isMobile ? '1.5rem' : '2rem',
+                maxWidth: isMobile ? '100%' : '600px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflow: 'auto',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: '1.5rem',
+              }}>
+                <h3 style={{
+                  fontSize: isMobile ? '1.1rem' : '1.25rem',
+                  fontWeight: '900',
+                  color: '#000000',
+                  textTransform: 'uppercase',
+                  margin: 0,
+                }}>
+                  REMINDERS FOR {format(selectedDate, 'MMMM dd, yyyy').toUpperCase()}
+                </h3>
+                <button
+                  onClick={() => setSelectedDate(null)}
+                  style={{
+                    ...neoStyles.button,
+                    ...buttonVariants.neutral,
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.875rem',
+                    minWidth: 'auto',
+                  }}
+                  onMouseEnter={(e) => {
+                    Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translate(0, 0)';
+                    e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              {getRemindersForDate(selectedDate).length === 0 ? (
+                <p style={{ color: '#000000', fontWeight: '700', textAlign: 'center', padding: '2rem' }}>
+                  NO REMINDERS FOR THIS DATE{selectedWebhookFilter !== 'all' ? ` WITH SELECTED WEBHOOK FILTER` : ''}
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {getRemindersForDate(selectedDate).map(reminder => (
+                    <div
+                      key={reminder.id}
+                      style={{
+                        padding: '1rem',
+                        background: '#FFFFFF',
+                        borderRadius: '0',
+                        border: '3px solid #000000',
+                        boxShadow: '4px 4px 0px 0px #000000',
+                      }}
+                    >
                       <div style={{
-                        fontSize: '0.875rem',
-                        color: '#000000',
+                        fontSize: isMobile ? '0.9rem' : '1rem',
+                        fontWeight: '900',
                         marginBottom: '0.5rem',
+                        color: '#000000',
+                        textTransform: 'uppercase',
+                      }}>
+                        {reminder.text}
+                      </div>
+                      {reminder.description && (
+                        <div style={{
+                          fontSize: isMobile ? '0.8rem' : '0.875rem',
+                          color: '#000000',
+                          marginBottom: '0.5rem',
+                          fontWeight: '600',
+                        }}>
+                          {reminder.description}
+                        </div>
+                      )}
+                      <div style={{
+                        fontSize: isMobile ? '0.75rem' : '0.875rem',
+                        color: '#000000',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '1rem',
                         fontWeight: '600',
                       }}>
-                        {reminder.description}
+                        <span>
+                          🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
+                        </span>
+                        <span>
+                          🔗 WEBHOOK: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
+                        </span>
                       </div>
-                    )}
-                    <div style={{
-                      fontSize: '0.875rem',
-                      color: '#000000',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '1rem',
-                      fontWeight: '600',
-                    }}>
-                      <span>
-                        🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
-                      </span>
-                      <span>
-                        🔗 WEBHOOK: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
-                      </span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <button
-              onClick={() => setSelectedDate(null)}
-              style={{
-                ...neoStyles.button,
-                ...buttonVariants.neutral,
-                marginTop: '1rem',
-                padding: '0.5rem 1rem',
-                fontSize: '0.875rem',
-              }}
-              onMouseEnter={(e) => {
-                Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translate(0, 0)';
-                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-              }}
-            >
-              CLOSE
-            </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
