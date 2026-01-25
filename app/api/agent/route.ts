@@ -391,8 +391,9 @@ export async function POST(request: NextRequest) {
       content: message,
     });
 
-    // Use DeepSeek R1T Chimera free model from OpenRouter
-    const modelName = 'tngtech/deepseek-r1t-chimera:free';
+    // Use Llama 3.2 3B Instruct free model from OpenRouter (supports function calling)
+    // This is a free model that supports tool use
+    const modelName = 'meta-llama/llama-3.2-3b-instruct:free';
 
     try {
       const completion = await openai.chat.completions.create({
