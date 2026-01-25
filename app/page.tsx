@@ -7,6 +7,7 @@ import ReminderForm from '@/components/ReminderForm';
 import ReminderList from '@/components/ReminderList';
 import UpdateDueDateModal from '@/components/UpdateDueDateModal';
 import EditDelayMessageModal from '@/components/EditDelayMessageModal';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export interface Reminder {
   id: number;
@@ -28,6 +29,8 @@ export default function Home() {
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showDelayModal, setShowDelayModal] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isSmallMobile = useMediaQuery('(max-width: 480px)');
 
   useEffect(() => {
     fetchReminders();
@@ -90,18 +93,29 @@ export default function Home() {
   };
 
   return (
-    <main style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <main style={{ 
+      maxWidth: '1200px', 
+      margin: '0 auto',
+      width: '100%',
+    }}>
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '2rem',
+        padding: isMobile ? '1rem' : '2rem',
         boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
         marginBottom: '2rem',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-          <div>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between', 
+          alignItems: isMobile ? 'flex-start' : 'flex-start', 
+          gap: '1rem',
+          marginBottom: '2rem' 
+        }}>
+          <div style={{ flex: 1 }}>
             <h1 style={{
-              fontSize: '2.5rem',
+              fontSize: isMobile ? '1.75rem' : '2.5rem',
               fontWeight: 'bold',
               marginBottom: '0.5rem',
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -110,7 +124,7 @@ export default function Home() {
             }}>
               📋 Reminders
             </h1>
-            <p style={{ color: '#666' }}>
+            <p style={{ color: '#666', fontSize: isMobile ? '0.875rem' : '1rem' }}>
               Manage your Slack reminders and never miss a deadline
             </p>
           </div>
@@ -124,6 +138,9 @@ export default function Home() {
               borderRadius: '6px',
               fontWeight: '500',
               fontSize: '0.9rem',
+              whiteSpace: 'nowrap',
+              alignSelf: isMobile ? 'stretch' : 'auto',
+              textAlign: 'center',
             }}
           >
             🔗 Manage Webhooks
@@ -135,7 +152,7 @@ export default function Home() {
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '2rem',
+        padding: isMobile ? '1rem' : '2rem',
         boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
       }}>
         {loading ? (

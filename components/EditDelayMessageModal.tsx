@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface Reminder {
   id: number;
@@ -29,6 +30,7 @@ interface EditDelayMessageModalProps {
 }
 
 export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: EditDelayMessageModalProps) {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [delayMessage, setDelayMessage] = useState(reminder.delay_message || '');
   const [delayWebhooks, setDelayWebhooks] = useState<string[]>(reminder.delay_webhooks || []);
   const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
@@ -111,7 +113,7 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
         style={{
           background: 'white',
           borderRadius: '12px',
-          padding: '2rem',
+          padding: isMobile ? '1.5rem' : '2rem',
           maxWidth: '600px',
           width: '100%',
           maxHeight: '90vh',
@@ -120,7 +122,7 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
+        <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
           Edit Delay Notification Settings
         </h2>
         <p style={{ color: '#666', marginBottom: '1.5rem' }}>
@@ -193,7 +195,12 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: '0.5rem', 
+            justifyContent: 'flex-end' 
+          }}>
             <button
               type="button"
               onClick={onClose}
@@ -203,9 +210,10 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
                 color: '#374151',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '1rem',
+                fontSize: isMobile ? '0.9rem' : '1rem',
                 cursor: 'pointer',
                 fontWeight: '500',
+                width: isMobile ? '100%' : 'auto',
               }}
             >
               Cancel
@@ -219,9 +227,10 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '1rem',
+                fontSize: isMobile ? '0.9rem' : '1rem',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontWeight: '500',
+                width: isMobile ? '100%' : 'auto',
               }}
             >
               {loading ? 'Saving...' : 'Save'}

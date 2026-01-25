@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface Reminder {
   id: number;
@@ -24,6 +25,7 @@ interface UpdateDueDateModalProps {
 }
 
 export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: UpdateDueDateModalProps) {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [newDueDate, setNewDueDate] = useState(reminder.due_date);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -101,7 +103,7 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
         style={{
           background: 'white',
           borderRadius: '12px',
-          padding: '2rem',
+          padding: isMobile ? '1.5rem' : '2rem',
           maxWidth: '600px',
           width: '100%',
           maxHeight: '90vh',
@@ -110,7 +112,7 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
+        <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
           Update Due Date
         </h2>
         <p style={{ color: '#666', marginBottom: '1.5rem' }}>
@@ -171,7 +173,12 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: '0.5rem', 
+            justifyContent: 'flex-end' 
+          }}>
             <button
               type="button"
               onClick={onClose}
@@ -181,9 +188,10 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
                 color: '#374151',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '1rem',
+                fontSize: isMobile ? '0.9rem' : '1rem',
                 cursor: 'pointer',
                 fontWeight: '500',
+                width: isMobile ? '100%' : 'auto',
               }}
             >
               Cancel
@@ -197,9 +205,10 @@ export default function UpdateDueDateModal({ reminder, onClose, onUpdated }: Upd
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '1rem',
+                fontSize: isMobile ? '0.9rem' : '1rem',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontWeight: '500',
+                width: isMobile ? '100%' : 'auto',
               }}
             >
               {loading ? 'Updating...' : 'Update'}

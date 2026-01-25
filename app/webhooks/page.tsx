@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface SavedWebhook {
   id: number;
@@ -11,6 +12,7 @@ interface SavedWebhook {
 }
 
 export default function WebhooksPage() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [webhooks, setWebhooks] = useState<SavedWebhook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -117,18 +119,25 @@ export default function WebhooksPage() {
   };
 
   return (
-    <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
+    <main style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '1rem' : '2rem', width: '100%' }}>
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '2rem',
+        padding: isMobile ? '1rem' : '2rem',
         boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
         marginBottom: '2rem',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between', 
+          alignItems: isMobile ? 'flex-start' : 'center', 
+          gap: '1rem',
+          marginBottom: '1.5rem' 
+        }}>
+          <div style={{ flex: 1 }}>
             <h1 style={{
-              fontSize: '2.5rem',
+              fontSize: isMobile ? '1.75rem' : '2.5rem',
               fontWeight: 'bold',
               marginBottom: '0.5rem',
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -137,7 +146,7 @@ export default function WebhooksPage() {
             }}>
               🔗 Saved Webhooks
             </h1>
-            <p style={{ color: '#666' }}>Manage your saved Slack webhooks</p>
+            <p style={{ color: '#666', fontSize: isMobile ? '0.875rem' : '1rem' }}>Manage your saved Slack webhooks</p>
           </div>
           <Link
             href="/"
@@ -148,6 +157,9 @@ export default function WebhooksPage() {
               textDecoration: 'none',
               borderRadius: '6px',
               fontWeight: '500',
+              fontSize: isMobile ? '0.875rem' : '1rem',
+              alignSelf: isMobile ? 'stretch' : 'auto',
+              textAlign: 'center',
             }}
           >
             ← Back to Reminders
@@ -282,27 +294,39 @@ export default function WebhooksPage() {
               <div
                 key={webhook.id}
                 style={{
-                  padding: '1.5rem',
+                  padding: isMobile ? '1rem' : '1.5rem',
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   background: 'white',
                   display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
                   justifyContent: 'space-between',
-                  alignItems: 'center',
+                  alignItems: isMobile ? 'stretch' : 'center',
+                  gap: '1rem',
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{ 
+                    fontSize: isMobile ? '1rem' : '1.2rem', 
+                    fontWeight: '600', 
+                    marginBottom: '0.5rem',
+                    wordBreak: 'break-word',
+                  }}>
                     {webhook.name}
                   </h3>
-                  <p style={{ color: '#666', fontSize: '0.9rem', wordBreak: 'break-all' }}>
+                  <p style={{ color: '#666', fontSize: isMobile ? '0.8rem' : '0.9rem', wordBreak: 'break-all' }}>
                     {webhook.webhook_url}
                   </p>
                   <p style={{ color: '#999', fontSize: '0.8rem', marginTop: '0.5rem' }}>
                     Created: {new Date(webhook.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: isMobile ? 'row' : 'row',
+                  gap: '0.5rem',
+                  width: isMobile ? '100%' : 'auto',
+                }}>
                   <button
                     onClick={() => handleEdit(webhook)}
                     style={{
@@ -311,9 +335,10 @@ export default function WebhooksPage() {
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
-                      fontSize: '0.875rem',
+                      fontSize: isMobile ? '0.75rem' : '0.875rem',
                       cursor: 'pointer',
                       fontWeight: '500',
+                      flex: isMobile ? '1' : '0',
                     }}
                   >
                     Edit
@@ -326,9 +351,10 @@ export default function WebhooksPage() {
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
-                      fontSize: '0.875rem',
+                      fontSize: isMobile ? '0.75rem' : '0.875rem',
                       cursor: 'pointer',
                       fontWeight: '500',
+                      flex: isMobile ? '1' : '0',
                     }}
                   >
                     Delete

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface SavedWebhook {
   id: number;
@@ -13,6 +14,7 @@ interface ReminderFormProps {
 }
 
 export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [formData, setFormData] = useState({
     text: '',
     description: '',

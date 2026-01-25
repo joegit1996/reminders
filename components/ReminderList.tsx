@@ -1,6 +1,7 @@
 'use client';
 
 import { format, differenceInDays } from 'date-fns';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface Reminder {
   id: number;
@@ -24,10 +25,13 @@ interface ReminderListProps {
 }
 
 export default function ReminderList({ reminders, onComplete, onUpdateDueDate, onEditDelayMessage }: ReminderListProps) {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isSmallMobile = useMediaQuery('(max-width: 480px)');
+
   if (reminders.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
-        <p style={{ fontSize: '1.2rem' }}>No reminders yet. Create one above!</p>
+      <div style={{ textAlign: 'center', padding: isMobile ? '2rem' : '3rem', color: '#666' }}>
+        <p style={{ fontSize: isMobile ? '1rem' : '1.2rem' }}>No reminders yet. Create one above!</p>
       </div>
     );
   }
@@ -42,7 +46,7 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
 
   return (
     <div>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1.5rem' }}>
+      <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: '600', marginBottom: '1.5rem' }}>
         Your Reminders ({reminders.length})
       </h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -54,34 +58,50 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
             <div
               key={reminder.id}
               style={{
-                padding: '1.5rem',
+                padding: isMobile ? '1rem' : '1.5rem',
                 border: `2px solid ${reminder.is_complete ? '#4ade80' : isOverdue ? '#f87171' : '#e5e7eb'}`,
                 borderRadius: '8px',
                 background: reminder.is_complete ? '#f0fdf4' : isOverdue ? '#fef2f2' : '#f9fafb',
                 opacity: reminder.is_complete ? 0.7 : 1,
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'stretch' : 'flex-start', 
+                gap: '1rem',
+                marginBottom: '1rem' 
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{
-                    fontSize: '1.2rem',
+                    fontSize: isMobile ? '1rem' : '1.2rem',
                     fontWeight: '600',
                     marginBottom: '0.5rem',
                     textDecoration: reminder.is_complete ? 'line-through' : 'none',
+                    wordBreak: 'break-word',
                   }}>
                     {reminder.text}
                   </h3>
                   {reminder.description && (
                     <p style={{
-                      fontSize: '0.95rem',
+                      fontSize: isMobile ? '0.875rem' : '0.95rem',
                       color: '#666',
                       marginBottom: '0.5rem',
                       lineHeight: '1.5',
+                      wordBreak: 'break-word',
                     }}>
                       {reminder.description}
                     </p>
                   )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.9rem', color: '#666' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: isSmallMobile ? 'column' : 'row',
+                    flexWrap: 'wrap', 
+                    gap: '0.75rem', 
+                    fontSize: isMobile ? '0.8rem' : '0.9rem', 
+                    color: '#666' 
+                  }}>
                     <span>
                       📅 Due: <strong>{format(new Date(reminder.due_date), 'MMM dd, yyyy')}</strong>
                     </span>
@@ -93,14 +113,21 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                     <span>
                       🔄 Period: <strong>{reminder.period_days} day{reminder.period_days !== 1 ? 's' : ''}</strong>
                     </span>
-                    {reminder.last_sent && (
+                    {reminder.last_sent && !isSmallMobile && (
                       <span>
                         📤 Last sent: <strong>{format(new Date(reminder.last_sent), 'MMM dd, yyyy HH:mm')}</strong>
                       </span>
                     )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, flexWrap: 'wrap' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: isSmallMobile ? 'column' : 'row',
+                  gap: '0.5rem', 
+                  flexShrink: 0, 
+                  flexWrap: 'wrap',
+                  width: isMobile ? '100%' : 'auto',
+                }}>
                   {!reminder.is_complete && (
                     <>
                       <button
@@ -111,12 +138,14 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '0.875rem',
+                          fontSize: isMobile ? '0.75rem' : '0.875rem',
                           cursor: 'pointer',
                           fontWeight: '500',
+                          flex: isSmallMobile ? '1' : '0',
+                          minWidth: isSmallMobile ? '0' : 'auto',
                         }}
                       >
-                        Update Due Date
+                        {isSmallMobile ? 'Update Date' : 'Update Due Date'}
                       </button>
                       <button
                         onClick={() => onEditDelayMessage(reminder)}
@@ -126,12 +155,14 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '0.875rem',
+                          fontSize: isMobile ? '0.75rem' : '0.875rem',
                           cursor: 'pointer',
                           fontWeight: '500',
+                          flex: isSmallMobile ? '1' : '0',
+                          minWidth: isSmallMobile ? '0' : 'auto',
                         }}
                       >
-                        Edit Delay Message
+                        {isSmallMobile ? 'Edit Delay' : 'Edit Delay Message'}
                       </button>
                       <button
                         onClick={() => onComplete(reminder.id)}
@@ -141,12 +172,14 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
-                          fontSize: '0.875rem',
+                          fontSize: isMobile ? '0.75rem' : '0.875rem',
                           cursor: 'pointer',
                           fontWeight: '500',
+                          flex: isSmallMobile ? '1' : '0',
+                          minWidth: isSmallMobile ? '0' : 'auto',
                         }}
                       >
-                        Mark Complete
+                        {isSmallMobile ? 'Complete' : 'Mark Complete'}
                       </button>
                     </>
                   )}
