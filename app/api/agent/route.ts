@@ -221,12 +221,7 @@ const functionDefinitions = [
 
 // Function implementations
 async function executeFunction(name: string, args: any, req: NextRequest) {
-  // Get base URL from headers for server-side fetch calls
-  const protocol = req.headers.get('x-forwarded-proto') || 'http';
-  const host = req.headers.get('host') || 'localhost:3000';
-  const baseUrl = `${protocol}://${host}`;
-  
-  console.log('Executing function:', name, 'with args:', args, 'baseUrl:', baseUrl);
+  console.log('Executing function:', name, 'with args:', args);
   
   switch (name) {
     case 'create_reminder':
@@ -301,31 +296,41 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
       return { reminders: filtered };
     
     case 'delete_reminder':
-      const deleteResponse = await fetch(`${baseUrl}/api/reminders/${args.id}`, {
-        method: 'DELETE',
-      });
-      if (!deleteResponse.ok) {
-        const error = await deleteResponse.json();
-        return { error: error.error || 'Failed to delete reminder' };
+      // Delete reminder directly from database
+      const reminderToDelete = await getReminderById(args.id);
+      if (!reminderToDelete) {
+        return { error: 'Reminder not found' };
+      }
+      const { supabase } = await import('@/lib/supabase');
+      const { error: deleteError } = await supabase
+        .from('reminders')
+        .delete()
+        .eq('id', args.id);
+      if (deleteError) {
+        return { error: deleteError.message || 'Failed to delete reminder' };
       }
       return { success: true, message: 'Reminder deleted successfully' };
     
     case 'update_delay_config':
-      const delayConfigResponse = await fetch(`${baseUrl}/api/reminders/${args.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update-delay-config',
-          delayMessage: args.delayMessage || null,
-          delayWebhooks: args.delayWebhooks || [],
-        }),
-      });
-      if (!delayConfigResponse.ok) {
-        const error = await delayConfigResponse.json();
-        return { error: error.error || 'Failed to update delay config' };
+      // Update delay config directly
+      const reminderForDelay = await getReminderById(args.id);
+      if (!reminderForDelay) {
+        return { error: 'Reminder not found' };
       }
-      const delayConfigResult = await delayConfigResponse.json();
-      return { success: true, reminder: delayConfigResult };
+      const { supabase: supabaseDelay } = await import('@/lib/supabase');
+      const { data: updatedDelay, error: delayError } = await supabaseDelay
+        .from('reminders')
+        .update({
+          delay_message: args.delayMessage || null,
+          delay_webhooks: args.delayWebhooks || [],
+        })
+        .eq('id', args.id)
+        .select()
+        .single();
+      if (delayError) {
+        return { error: delayError.message || 'Failed to update delay config' };
+      }
+      return { success: true, reminder: updatedDelay };
     
     case 'update_automated_messages':
       // Process automated messages - generate IDs if not provided
@@ -339,20 +344,24 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
         sent_at: msg.sent_at || null,
       }));
       
-      const automatedMessagesResponse = await fetch(`${baseUrl}/api/reminders/${args.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update-automated-messages',
-          automatedMessages: processedMessages,
-        }),
-      });
-      if (!automatedMessagesResponse.ok) {
-        const error = await automatedMessagesResponse.json();
-        return { error: error.error || 'Failed to update automated messages' };
+      // Update automated messages directly
+      const reminderForAuto = await getReminderById(args.id);
+      if (!reminderForAuto) {
+        return { error: 'Reminder not found' };
       }
-      const automatedMessagesResult = await automatedMessagesResponse.json();
-      return { success: true, reminder: automatedMessagesResult };
+      const { supabase: supabaseAuto } = await import('@/lib/supabase');
+      const { data: updatedAuto, error: autoError } = await supabaseAuto
+        .from('reminders')
+        .update({
+          automated_messages: processedMessages,
+        })
+        .eq('id', args.id)
+        .select()
+        .single();
+      if (autoError) {
+        return { error: autoError.message || 'Failed to update automated messages' };
+      }
+      return { success: true, reminder: updatedAuto };
     
     default:
       return { error: `Unknown function: ${name}` };
