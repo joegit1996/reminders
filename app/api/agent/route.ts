@@ -360,7 +360,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { message, conversationHistory = [] } = body;
+    const { message, conversationHistory = [], approveActions, pendingActionId, responseMessage: storedResponseMessage } = body;
 
     if (!message) {
       return NextResponse.json(
@@ -412,12 +412,12 @@ export async function POST(request: NextRequest) {
 
       const responseMessage = completion.choices[0].message;
 
-      // Check if the model wants to call a function
-      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+      // If this is an approval request, execute the stored response message's tool calls
+      if (approveActions && storedResponseMessage && storedResponseMessage.tool_calls) {
         const functionResults = [];
         const functionCallsData: Array<{ name: string; args: any }> = [];
         
-        for (const toolCall of responseMessage.tool_calls) {
+        for (const toolCall of storedResponseMessage.tool_calls) {
           if (toolCall.type === 'function') {
             const functionName = toolCall.function.name;
             const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
@@ -440,7 +440,7 @@ export async function POST(request: NextRequest) {
         // Add function results to messages and get final response
         const finalMessages = [
           ...messages,
-          responseMessage,
+          storedResponseMessage,
           ...functionResults,
         ];
 
@@ -452,6 +452,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           response: finalCompletion.choices[0].message.content || '',
           functionCalls: functionCallsData,
+          approved: true,
+        });
+      }
+
+      // Check if the model wants to call a function
+      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+
+        // Otherwise, return pending actions for approval
+        const pendingActions = responseMessage.tool_calls
+          .filter((tc: any) => tc.type === 'function')
+          .map((tc: any) => ({
+            id: tc.id,
+            name: tc.function.name,
+            args: JSON.parse(tc.function.arguments || '{}'),
+            description: functionDefinitions.find(fn => fn.name === tc.function.name)?.description || '',
+          }));
+
+        return NextResponse.json({
+          response: responseMessage.content || 'I need your approval to proceed with the following actions:',
+          pendingActions: pendingActions,
+          requiresApproval: true,
         });
       }
 
