@@ -605,6 +605,7 @@ User: "create reminder for youssef about X"
             pendingActions: pendingActions,
             requiresApproval: true,
             responseMessage: responseMessage, // Store full response for execution
+            readResults: readResults, // Include results of immediate read operations
           });
         }
 
