@@ -348,7 +348,63 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                   )}
                 </div>
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#000000', marginTop: '0.5rem', fontWeight: '600' }}>
+
+              {/* Description: Full Width */}
+              {reminder.description && (
+                <div style={{
+                  width: '100%',
+                  padding: 0,
+                  margin: 0,
+                }}>
+                  <p style={{
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    color: '#000000',
+                    lineHeight: '1.5',
+                    wordBreak: 'break-word',
+                    fontWeight: '600',
+                    margin: 0,
+                    columnCount: isMobile ? 1 : 'auto',
+                    columnWidth: isMobile ? '100%' : '200px',
+                    columnGap: isMobile ? '0' : '2rem',
+                    columnFill: 'balance',
+                    width: '100%',
+                  }}>
+                    {reminder.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Details: Metadata */}
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: isSmallMobile ? 'column' : 'row',
+                flexWrap: 'wrap', 
+                gap: isMobile ? '0.5rem' : '1rem', 
+                fontSize: isMobile ? '0.75rem' : isSmallMobile ? '0.8rem' : '0.875rem', 
+                color: '#000000',
+                fontWeight: '600',
+                lineHeight: '1.6',
+                width: '100%',
+              }}>
+                <span style={{ whiteSpace: 'nowrap' }}>
+                  📅 DUE: <strong>{format(new Date(reminder.due_date), 'MMM dd, yyyy')}</strong>
+                </span>
+                <span style={{ whiteSpace: 'nowrap' }}>
+                  ⏰ DAYS REMAINING: <strong style={{ color: isOverdue ? '#FF6B6B' : '#6BCB77' }}>
+                    {daysRemaining >= 0 ? daysRemaining : `-${Math.abs(daysRemaining)} (OVERDUE)`}
+                  </strong>
+                </span>
+                <span style={{ whiteSpace: 'nowrap' }}>
+                  🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
+                </span>
+                {reminder.last_sent && (
+                  <span style={{ whiteSpace: 'nowrap' }}>
+                    📤 LAST SENT: <strong>{format(new Date(reminder.last_sent), 'MMM dd, yyyy HH:mm')}</strong>
+                  </span>
+                )}
+              </div>
+
+              <div style={{ fontSize: '0.8rem', color: '#000000', fontWeight: '600' }}>
                 🔗 WEBHOOK: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
               </div>
               {reminder.automated_messages && reminder.automated_messages.length > 0 && (
