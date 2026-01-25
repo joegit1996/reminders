@@ -2,6 +2,7 @@
 
 import { format, differenceInDays } from 'date-fns';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useState, useEffect } from 'react';
 
 interface Reminder {
   id: number;
@@ -17,6 +18,12 @@ interface Reminder {
   created_at: string;
 }
 
+interface SavedWebhook {
+  id: number;
+  name: string;
+  webhook_url: string;
+}
+
 interface ReminderListProps {
   reminders: Reminder[];
   onComplete: (id: number) => void;
@@ -27,6 +34,28 @@ interface ReminderListProps {
 export default function ReminderList({ reminders, onComplete, onUpdateDueDate, onEditDelayMessage }: ReminderListProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isSmallMobile = useMediaQuery('(max-width: 480px)');
+  const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
+
+  useEffect(() => {
+    fetchSavedWebhooks();
+  }, []);
+
+  const fetchSavedWebhooks = async () => {
+    try {
+      const response = await fetch('/api/webhooks');
+      if (response.ok) {
+        const data = await response.json();
+        setSavedWebhooks(data);
+      }
+    } catch (error) {
+      console.error('Error fetching saved webhooks:', error);
+    }
+  };
+
+  const getWebhookName = (webhookUrl: string): string => {
+    const webhook = savedWebhooks.find(wh => wh.webhook_url === webhookUrl);
+    return webhook ? webhook.name : webhookUrl.substring(0, 30) + '...';
+  };
 
   if (reminders.length === 0) {
     return (
@@ -198,7 +227,7 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                 </div>
               </div>
               <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.5rem' }}>
-                Webhook: {reminder.slack_webhook.substring(0, 50)}...
+                🔗 Webhook: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
               </div>
             </div>
           );

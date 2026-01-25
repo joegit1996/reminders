@@ -128,23 +128,40 @@ export default function Home() {
               Manage your Slack reminders and never miss a deadline
             </p>
           </div>
-          <Link
-            href="/webhooks"
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: '#e5e7eb',
-              color: '#374151',
-              textDecoration: 'none',
-              borderRadius: '6px',
-              fontWeight: '500',
-              fontSize: '0.9rem',
-              whiteSpace: 'nowrap',
-              alignSelf: isMobile ? 'stretch' : 'auto',
-              textAlign: 'center',
-            }}
-          >
-            🔗 Manage Webhooks
-          </Link>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <Link
+              href="/calendar"
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: '#e5e7eb',
+                color: '#374151',
+                textDecoration: 'none',
+                borderRadius: '6px',
+                fontWeight: '500',
+                fontSize: '0.9rem',
+                whiteSpace: 'nowrap',
+                textAlign: 'center',
+              }}
+            >
+              📅 Calendar
+            </Link>
+            <Link
+              href="/webhooks"
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: '#e5e7eb',
+                color: '#374151',
+                textDecoration: 'none',
+                borderRadius: '6px',
+                fontWeight: '500',
+                fontSize: '0.9rem',
+                whiteSpace: 'nowrap',
+                textAlign: 'center',
+              }}
+            >
+              🔗 Manage Webhooks
+            </Link>
+          </div>
         </div>
         <ReminderForm onReminderCreated={handleReminderCreated} />
       </div>
