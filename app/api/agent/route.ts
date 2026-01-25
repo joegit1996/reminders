@@ -268,9 +268,16 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
     
     case 'list_webhooks':
       const webhooks = await getAllSavedWebhooks();
+      // Ensure all webhook data is serializable (convert Date objects to strings)
+      const serializableWebhooks = webhooks.map((w: any) => ({
+        id: w.id,
+        name: w.name,
+        webhook_url: w.webhook_url,
+        created_at: typeof w.created_at === 'string' ? w.created_at : (w.created_at?.toISOString?.() || String(w.created_at)),
+      }));
       return { 
-        webhooks,
-        message: `Found ${webhooks.length} saved webhooks. Available webhooks: ${webhooks.map((w: any) => `"${w.name}" (${w.webhook_url})`).join(', ')}`
+        webhooks: serializableWebhooks,
+        message: `Found ${serializableWebhooks.length} saved webhooks. Available webhooks: ${serializableWebhooks.map((w: any) => `"${w.name}" (${w.webhook_url})`).join(', ')}`
       };
     
     case 'search_reminders':
@@ -629,15 +636,38 @@ User: "create reminder for youssef about X"
           // Execute read operations immediately (no approval needed)
           const readResults = [];
           for (const toolCall of readOperations) {
-              if (toolCall.type === 'function') {
-                const functionName = toolCall.function.name;
-                const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+            if (toolCall.type === 'function') {
+              const functionName = toolCall.function.name;
+              const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+              
+              try {
                 const functionResult = await executeFunction(functionName, functionArgs, request);
-              readResults.push({
-                role: 'tool' as const,
-                tool_call_id: toolCall.id,
-                content: JSON.stringify(functionResult),
-              });
+                
+                // Safely serialize the result
+                let serializedResult: string;
+                try {
+                  serializedResult = JSON.stringify(functionResult);
+                } catch (serializeError) {
+                  console.error('[AGENT] Error serializing read result:', serializeError, functionResult);
+                  serializedResult = JSON.stringify({
+                    error: 'Failed to serialize result',
+                    message: functionResult?.message || 'Function executed but result could not be serialized',
+                  });
+                }
+                
+                readResults.push({
+                  role: 'tool' as const,
+                  tool_call_id: toolCall.id,
+                  content: serializedResult,
+                });
+              } catch (execError) {
+                console.error('[AGENT] Error executing read function:', execError);
+                readResults.push({
+                  role: 'tool' as const,
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: execError instanceof Error ? execError.message : 'Function execution failed' }),
+                });
+              }
             }
           }
 
@@ -660,18 +690,41 @@ User: "create reminder for youssef about X"
             const functionName = toolCall.function.name;
             const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
             
-                // Execute the function
-                const functionResult = await executeFunction(functionName, functionArgs, request);
-            functionResults.push({
-              role: 'tool' as const,
-              tool_call_id: toolCall.id,
-              content: JSON.stringify(functionResult),
-            });
-            
-            functionCallsData.push({
-              name: functionName,
-              args: functionArgs,
-            });
+            try {
+              // Execute the function
+              const functionResult = await executeFunction(functionName, functionArgs, request);
+              
+              // Safely serialize the result
+              let serializedResult: string;
+              try {
+                serializedResult = JSON.stringify(functionResult);
+              } catch (serializeError) {
+                console.error('[AGENT] Error serializing function result:', serializeError, functionResult);
+                // Fallback: create a safe serializable version
+                serializedResult = JSON.stringify({
+                  error: 'Failed to serialize result',
+                  message: functionResult?.message || 'Function executed but result could not be serialized',
+                });
+              }
+              
+              functionResults.push({
+                role: 'tool' as const,
+                tool_call_id: toolCall.id,
+                content: serializedResult,
+              });
+              
+              functionCallsData.push({
+                name: functionName,
+                args: functionArgs,
+              });
+            } catch (execError) {
+              console.error('[AGENT] Error executing function:', execError);
+              functionResults.push({
+                role: 'tool' as const,
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({ error: execError instanceof Error ? execError.message : 'Function execution failed' }),
+              });
+            }
           }
         }
 
@@ -682,20 +735,38 @@ User: "create reminder for youssef about X"
           ...functionResults,
         ];
 
-        const finalCompletion = await openai.chat.completions.create({
-          model: modelName,
-          messages: finalMessages as any,
-          tools: functionDefinitions.map(fn => ({
-            type: 'function',
-            function: {
-              name: fn.name,
-              description: fn.description,
-              parameters: fn.parameters,
-            },
-          })),
-          tool_choice: 'auto',
-          stream: false,
-        });
+        // Log the messages being sent for debugging
+        console.log('[AGENT] Sending follow-up request with', finalMessages.length, 'messages');
+        console.log('[AGENT] Function results count:', functionResults.length);
+        if (functionResults.length > 0) {
+          console.log('[AGENT] First function result content preview:', functionResults[0].content?.substring(0, 200));
+        }
+
+        let finalCompletion;
+        try {
+          finalCompletion = await openai.chat.completions.create({
+            model: modelName,
+            messages: finalMessages as any,
+            tools: functionDefinitions.map(fn => ({
+              type: 'function',
+              function: {
+                name: fn.name,
+                description: fn.description,
+                parameters: fn.parameters,
+              },
+            })),
+            tool_choice: 'auto',
+            stream: false,
+          });
+        } catch (apiError: any) {
+          console.error('[AGENT] Error in follow-up API call:', apiError);
+          console.error('[AGENT] Error details:', JSON.stringify(apiError, null, 2));
+          // Return a helpful error message
+          return NextResponse.json({
+            response: 'Sorry, I encountered an error processing the webhook information. Please try again.',
+            functionCalls: functionCallsData,
+          });
+        }
 
         if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
           console.error('[AGENT] No choices in finalCompletion:', finalCompletion);
@@ -754,12 +825,35 @@ User: "create reminder for youssef about X"
               if (toolCall.type === 'function') {
                 const functionName = toolCall.function.name;
                 const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
-                const functionResult = await executeFunction(functionName, functionArgs, request);
-                followUpReadResults.push({
-                  role: 'tool' as const,
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify(functionResult),
-                });
+                
+                try {
+                  const functionResult = await executeFunction(functionName, functionArgs, request);
+                  
+                  // Safely serialize the result
+                  let serializedResult: string;
+                  try {
+                    serializedResult = JSON.stringify(functionResult);
+                  } catch (serializeError) {
+                    console.error('[AGENT] Error serializing follow-up read result:', serializeError, functionResult);
+                    serializedResult = JSON.stringify({
+                      error: 'Failed to serialize result',
+                      message: functionResult?.message || 'Function executed but result could not be serialized',
+                    });
+                  }
+                  
+                  followUpReadResults.push({
+                    role: 'tool' as const,
+                    tool_call_id: toolCall.id,
+                    content: serializedResult,
+                  });
+                } catch (execError) {
+                  console.error('[AGENT] Error executing follow-up read function:', execError);
+                  followUpReadResults.push({
+                    role: 'tool' as const,
+                    tool_call_id: toolCall.id,
+                    content: JSON.stringify({ error: execError instanceof Error ? execError.message : 'Function execution failed' }),
+                  });
+                }
               }
             }
 
@@ -784,16 +878,39 @@ User: "create reminder for youssef about X"
             if (toolCall.type === 'function') {
               const functionName = toolCall.function.name;
               const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
-              const functionResult = await executeFunction(functionName, functionArgs, request);
-              followUpFunctionResults.push({
-                role: 'tool' as const,
-                tool_call_id: toolCall.id,
-                content: JSON.stringify(functionResult),
-              });
-              followUpFunctionCallsData.push({
-                name: functionName,
-                args: functionArgs,
-              });
+              
+              try {
+                const functionResult = await executeFunction(functionName, functionArgs, request);
+                
+                // Safely serialize the result
+                let serializedResult: string;
+                try {
+                  serializedResult = JSON.stringify(functionResult);
+                } catch (serializeError) {
+                  console.error('[AGENT] Error serializing follow-up function result:', serializeError, functionResult);
+                  serializedResult = JSON.stringify({
+                    error: 'Failed to serialize result',
+                    message: functionResult?.message || 'Function executed but result could not be serialized',
+                  });
+                }
+                
+                followUpFunctionResults.push({
+                  role: 'tool' as const,
+                  tool_call_id: toolCall.id,
+                  content: serializedResult,
+                });
+                followUpFunctionCallsData.push({
+                  name: functionName,
+                  args: functionArgs,
+                });
+              } catch (execError) {
+                console.error('[AGENT] Error executing follow-up function:', execError);
+                followUpFunctionResults.push({
+                  role: 'tool' as const,
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({ error: execError instanceof Error ? execError.message : 'Function execution failed' }),
+                });
+              }
             }
           }
 
