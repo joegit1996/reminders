@@ -34,6 +34,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedWebhookFilter, setSelectedWebhookFilter] = useState<string>('all');
   const [hoveredReminder, setHoveredReminder] = useState<{ reminder: Reminder; x: number; y: number } | null>(null);
+  const [showShareLinks, setShowShareLinks] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -637,6 +638,150 @@ export default function CalendarPage() {
             </button>
           </div>
         )}
+
+        {/* Share Calendar Section */}
+        <div style={{
+          marginTop: '2rem',
+        }}>
+          <button
+            type="button"
+            onClick={() => setShowShareLinks(!showShareLinks)}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              background: showShareLinks ? '#e5e7eb' : '#f3f4f6',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              fontWeight: '500',
+              marginBottom: showShareLinks ? '1rem' : '0',
+            }}
+          >
+            {showShareLinks ? '▼ Hide' : '▶ Show'} Share Calendar Links
+          </button>
+          
+          {showShareLinks && (
+            <div style={{
+              padding: '1.5rem',
+              background: '#f9fafb',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb',
+            }}>
+              <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                Copy these links to share a public calendar view. Anyone with the link can view reminders.
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* All Webhooks Link */}
+                <div style={{
+                  padding: '1rem',
+                  background: 'white',
+                  borderRadius: '6px',
+                  border: '1px solid #e5e7eb',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                        All Webhooks
+                      </div>
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: '#666',
+                        wordBreak: 'break-all',
+                        fontFamily: 'monospace',
+                        background: '#f3f4f6',
+                        padding: '0.5rem',
+                        borderRadius: '4px',
+                        marginTop: '0.5rem',
+                      }}>
+                        {typeof window !== 'undefined' ? `${window.location.origin}/calendar/public` : '/calendar/public'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const url = typeof window !== 'undefined' ? `${window.location.origin}/calendar/public` : '/calendar/public';
+                        navigator.clipboard.writeText(url);
+                        alert('Link copied to clipboard!');
+                      }}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                </div>
+
+                {/* Individual Webhook Links */}
+                {savedWebhooks.map(webhook => {
+                  const shareUrl = typeof window !== 'undefined' 
+                    ? `${window.location.origin}/calendar/public?webhook=${encodeURIComponent(webhook.webhook_url)}`
+                    : `/calendar/public?webhook=${encodeURIComponent(webhook.webhook_url)}`;
+                  
+                  return (
+                    <div
+                      key={webhook.id}
+                      style={{
+                        padding: '1rem',
+                        background: 'white',
+                        borderRadius: '6px',
+                        border: '1px solid #e5e7eb',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
+                            {webhook.name}
+                          </div>
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: '#666',
+                            wordBreak: 'break-all',
+                            fontFamily: 'monospace',
+                            background: '#f3f4f6',
+                            padding: '0.5rem',
+                            borderRadius: '4px',
+                            marginTop: '0.5rem',
+                          }}>
+                            {shareUrl}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(shareUrl);
+                            alert('Link copied to clipboard!');
+                          }}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            background: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer',
+                            fontWeight: '500',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Copy Link
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );
