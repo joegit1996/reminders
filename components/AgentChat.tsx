@@ -365,7 +365,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
             // Ensure scroll container is properly set up
             el.style.overflowY = 'auto';
             el.style.overflowX = 'hidden';
-            el.style.WebkitOverflowScrolling = 'touch';
+            (el.style as any).WebkitOverflowScrolling = 'touch';
           }
         }}
         style={{
@@ -382,7 +382,6 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           borderRadius: '0',
           minHeight: 0,
           maxHeight: '100%',
-          WebkitOverflowScrolling: 'touch',
         }}
       >
         {messages.map((msg, idx) => (
