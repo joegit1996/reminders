@@ -3,8 +3,14 @@ const fs = require('fs');
 const path = require('path');
 
 // Use the non-pooling connection for DDL operations
-const connectionString = process.env.POSTGRES_URL_NON_POOLING || 
-  'postgres://postgres.bczwvzzmdlofoaknqcge:MCoXQ4qR9KegcFY8@aws-1-us-east-1.pooler.supabase.com:5432/postgres';
+// IMPORTANT: Never commit database credentials! Use environment variables only.
+const connectionString = process.env.POSTGRES_URL_NON_POOLING;
+
+if (!connectionString) {
+  console.error('❌ Error: POSTGRES_URL_NON_POOLING environment variable is required');
+  console.log('   Set it in your environment or .env.local file');
+  process.exit(1);
+}
 
 const client = new Client({
   connectionString: connectionString,
