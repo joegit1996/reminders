@@ -548,6 +548,7 @@ export default function AgentChat({ onReminderUpdated }: AgentChatProps) {
           </div>
         )}
         <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input */}
