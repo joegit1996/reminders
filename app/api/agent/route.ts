@@ -577,10 +577,10 @@ User: "create reminder for youssef about X"
           // Execute read operations immediately (no approval needed)
           const readResults = [];
           for (const toolCall of readOperations) {
-            if (toolCall.type === 'function') {
-              const functionName = toolCall.function.name;
-              const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
-              const functionResult = await executeFunction(functionName, functionArgs);
+              if (toolCall.type === 'function') {
+                const functionName = toolCall.function.name;
+                const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+                const functionResult = await executeFunction(functionName, functionArgs, request);
               readResults.push({
                 role: 'tool' as const,
                 tool_call_id: toolCall.id,
