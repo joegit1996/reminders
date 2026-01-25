@@ -87,8 +87,8 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
                   value={item || ''}
                   onChange={(e) => {
                     const newArray = [...arrayValue];
-                    const selectedWebhook = webhooks.find(w => w.name === e.target.value || w.webhook_url === e.target.value);
-                    newArray[idx] = selectedWebhook ? selectedWebhook.webhook_url : e.target.value;
+                    // The value is already the webhook_url from the option
+                    newArray[idx] = e.target.value;
                     const newArgs = { ...localArgs };
                     if (path) {
                       const pathParts = path.split('.');
@@ -111,7 +111,7 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
                   <option value="">Select webhook...</option>
                   {webhooks.map((webhook) => (
                     <option key={webhook.id} value={webhook.webhook_url}>
-                      {webhook.name}
+                      {webhook.name} - {webhook.webhook_url}
                     </option>
                   ))}
                   {item && !webhooks.find(w => w.webhook_url === item) && (
