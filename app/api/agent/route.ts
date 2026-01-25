@@ -657,10 +657,129 @@ User: "create reminder for youssef about X"
         const finalCompletion = await openai.chat.completions.create({
           model: modelName,
           messages: finalMessages as any,
+          tools: functionDefinitions.map(fn => ({
+            type: 'function',
+            function: {
+              name: fn.name,
+              description: fn.description,
+              parameters: fn.parameters,
+            },
+          })),
+          tool_choice: 'auto',
         });
 
+        const finalResponseMessage = finalCompletion.choices[0].message;
+
+        // Check if the follow-up response has tool calls (write operations)
+        if (finalResponseMessage.tool_calls && finalResponseMessage.tool_calls.length > 0) {
+          // Define read-only operations that don't require approval
+          const readOnlyOperations = ['list_reminders', 'get_reminder', 'search_reminders', 'list_webhooks'];
+          
+          // Separate read and write operations in the follow-up response
+          const followUpToolCalls = finalResponseMessage.tool_calls.filter((tc: any) => tc.type === 'function');
+          console.log('[AGENT] Follow-up tool calls:', followUpToolCalls.length);
+          
+          const followUpWriteOperations = followUpToolCalls.filter((tc: any) => {
+            const funcName = tc.type === 'function' ? tc.function?.name : null;
+            const isWrite = funcName && !readOnlyOperations.includes(funcName);
+            if (isWrite) {
+              console.log('[AGENT] Follow-up write operation detected:', funcName);
+            }
+            return isWrite;
+          });
+          const followUpReadOperations = followUpToolCalls.filter((tc: any) => {
+            const funcName = tc.type === 'function' ? tc.function?.name : null;
+            return funcName && readOnlyOperations.includes(funcName);
+          });
+          
+          console.log('[AGENT] Follow-up write operations:', followUpWriteOperations.length, 'Read operations:', followUpReadOperations.length);
+
+          // If there are write operations in the follow-up, require approval
+          if (followUpWriteOperations.length > 0) {
+            console.log('[AGENT] REQUIRING APPROVAL for', followUpWriteOperations.length, 'follow-up write operation(s)');
+            
+            const pendingActions = followUpWriteOperations.map((tc: any) => {
+              const funcName = tc.type === 'function' ? tc.function?.name : '';
+              const funcDef = functionDefinitions.find(fn => fn.name === funcName);
+              return {
+                id: tc.id,
+                name: funcName,
+                args: JSON.parse((tc.type === 'function' ? tc.function?.arguments : '{}') || '{}'),
+                description: funcDef?.description || '',
+                parameters: funcDef?.parameters || {},
+                toolCall: tc,
+              };
+            });
+
+            // Execute follow-up read operations immediately
+            const followUpReadResults = [];
+            for (const toolCall of followUpReadOperations) {
+              if (toolCall.type === 'function') {
+                const functionName = toolCall.function.name;
+                const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+                const functionResult = await executeFunction(functionName, functionArgs, request);
+                followUpReadResults.push({
+                  role: 'tool' as const,
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify(functionResult),
+                });
+              }
+            }
+
+            // Combine all read results (from first call and follow-up)
+            const allReadResults = [...functionResults, ...followUpReadResults];
+
+            // Store the response message for later execution
+            return NextResponse.json({
+              response: finalResponseMessage.content || 'I need your approval to proceed with the following actions:',
+              pendingActions: pendingActions,
+              requiresApproval: true,
+              responseMessage: finalResponseMessage,
+              readResults: allReadResults,
+            });
+          }
+
+          // Follow-up has only read operations, execute them and get final response
+          const followUpFunctionResults = [];
+          const followUpFunctionCallsData: Array<{ name: string; args: any }> = [];
+          
+          for (const toolCall of followUpToolCalls) {
+            if (toolCall.type === 'function') {
+              const functionName = toolCall.function.name;
+              const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+              const functionResult = await executeFunction(functionName, functionArgs, request);
+              followUpFunctionResults.push({
+                role: 'tool' as const,
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(functionResult),
+              });
+              followUpFunctionCallsData.push({
+                name: functionName,
+                args: functionArgs,
+              });
+            }
+          }
+
+          // Make one more API call with follow-up results to get final text response
+          const finalMessagesWithResults = [
+            ...finalMessages,
+            finalResponseMessage,
+            ...followUpFunctionResults,
+          ];
+
+          const finalTextCompletion = await openai.chat.completions.create({
+            model: modelName,
+            messages: finalMessagesWithResults as any,
+          });
+
+          return NextResponse.json({
+            response: finalTextCompletion.choices[0].message.content || '',
+            functionCalls: [...functionCallsData, ...followUpFunctionCallsData],
+          });
+        }
+
         return NextResponse.json({
-          response: finalCompletion.choices[0].message.content || '',
+          response: finalResponseMessage.content || '',
           functionCalls: functionCallsData,
         });
       }
