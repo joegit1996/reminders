@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import { supabase } from './supabase';
 
 export interface Reminder {
   id: number;
@@ -20,65 +20,50 @@ export interface DueDateUpdateLog {
 }
 
 // Initialize database tables
+// Note: Tables should be created via Supabase SQL Editor using supabase-setup.sql
+// This function is kept for compatibility but tables must be created manually
 export async function initDatabase() {
-  try {
-    // Create reminders table
-    await sql`
-      CREATE TABLE IF NOT EXISTS reminders (
-        id SERIAL PRIMARY KEY,
-        text TEXT NOT NULL,
-        due_date DATE NOT NULL,
-        period_days INTEGER NOT NULL,
-        slack_webhook TEXT NOT NULL,
-        is_complete BOOLEAN DEFAULT FALSE,
-        last_sent TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-
-    // Create due_date_update_logs table
-    await sql`
-      CREATE TABLE IF NOT EXISTS due_date_update_logs (
-        id SERIAL PRIMARY KEY,
-        reminder_id INTEGER NOT NULL REFERENCES reminders(id) ON DELETE CASCADE,
-        old_due_date DATE NOT NULL,
-        new_due_date DATE NOT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-
-    console.log('Database initialized successfully');
-  } catch (error) {
-    console.error('Error initializing database:', error);
-    throw error;
-  }
+  // Tables are created via Supabase SQL Editor
+  // See supabase-setup.sql for the schema
+  console.log('Database tables should be created via Supabase SQL Editor');
 }
 
 // Get all active reminders
 export async function getActiveReminders(): Promise<Reminder[]> {
-  const { rows } = await sql`
-    SELECT * FROM reminders 
-    WHERE is_complete = FALSE 
-    ORDER BY created_at DESC;
-  `;
-  return rows as Reminder[];
+  const { data, error } = await supabase
+    .from('reminders')
+    .select('*')
+    .eq('is_complete', false)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data as Reminder[];
 }
 
 // Get all reminders (including completed)
 export async function getAllReminders(): Promise<Reminder[]> {
-  const { rows } = await sql`
-    SELECT * FROM reminders 
-    ORDER BY created_at DESC;
-  `;
-  return rows as Reminder[];
+  const { data, error } = await supabase
+    .from('reminders')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data as Reminder[];
 }
 
 // Get reminder by ID
 export async function getReminderById(id: number): Promise<Reminder | null> {
-  const { rows } = await sql`
-    SELECT * FROM reminders WHERE id = ${id};
-  `;
-  return rows[0] as Reminder || null;
+  const { data, error } = await supabase
+    .from('reminders')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null; // Not found
+    throw error;
+  }
+  return data as Reminder;
 }
 
 // Create a new reminder
@@ -88,12 +73,20 @@ export async function createReminder(
   periodDays: number,
   slackWebhook: string
 ): Promise<Reminder> {
-  const { rows } = await sql`
-    INSERT INTO reminders (text, due_date, period_days, slack_webhook)
-    VALUES (${text}, ${dueDate}, ${periodDays}, ${slackWebhook})
-    RETURNING *;
-  `;
-  return rows[0] as Reminder;
+  const { data, error } = await supabase
+    .from('reminders')
+    .insert({
+      text,
+      due_date: dueDate,
+      period_days: periodDays,
+      slack_webhook: slackWebhook,
+      is_complete: false,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Reminder;
 }
 
 // Update reminder due date
@@ -107,66 +100,93 @@ export async function updateReminderDueDate(
     throw new Error('Reminder not found');
   }
 
+  const oldDueDate = reminder.due_date;
+
   // Update reminder
-  const { rows: reminderRows } = await sql`
-    UPDATE reminders 
-    SET due_date = ${newDueDate}
-    WHERE id = ${id}
-    RETURNING *;
-  `;
+  const { data: updatedReminder, error: updateError } = await supabase
+    .from('reminders')
+    .update({ due_date: newDueDate })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
 
   // Log the update
-  const { rows: logRows } = await sql`
-    INSERT INTO due_date_update_logs (reminder_id, old_due_date, new_due_date)
-    VALUES (${id}, ${reminder.due_date}, ${newDueDate})
-    RETURNING *;
-  `;
+  const { data: log, error: logError } = await supabase
+    .from('due_date_update_logs')
+    .insert({
+      reminder_id: id,
+      old_due_date: oldDueDate,
+      new_due_date: newDueDate,
+    })
+    .select()
+    .single();
+
+  if (logError) throw logError;
 
   return {
-    reminder: reminderRows[0] as Reminder,
-    log: logRows[0] as DueDateUpdateLog,
+    reminder: updatedReminder as Reminder,
+    log: log as DueDateUpdateLog,
   };
 }
 
 // Mark reminder as complete
 export async function markReminderComplete(id: number): Promise<Reminder> {
-  const { rows } = await sql`
-    UPDATE reminders 
-    SET is_complete = TRUE
-    WHERE id = ${id}
-    RETURNING *;
-  `;
-  return rows[0] as Reminder;
+  const { data, error } = await supabase
+    .from('reminders')
+    .update({ is_complete: true })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Reminder;
 }
 
 // Update last_sent timestamp
 export async function updateLastSent(id: number): Promise<void> {
-  await sql`
-    UPDATE reminders 
-    SET last_sent = CURRENT_TIMESTAMP
-    WHERE id = ${id};
-  `;
+  const { error } = await supabase
+    .from('reminders')
+    .update({ last_sent: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) throw error;
 }
 
 // Get reminders that need to be sent
 export async function getRemindersToSend(): Promise<Reminder[]> {
-  const { rows } = await sql`
-    SELECT * FROM reminders 
-    WHERE is_complete = FALSE
-    AND (
-      last_sent IS NULL 
-      OR last_sent < CURRENT_TIMESTAMP - INTERVAL '1 day' * period_days
+  const now = new Date();
+  const { data, error } = await supabase
+    .from('reminders')
+    .select('*')
+    .eq('is_complete', false);
+
+  if (error) throw error;
+
+  // Filter reminders that need to be sent
+  const remindersToSend = (data as Reminder[]).filter((reminder) => {
+    if (!reminder.last_sent) return true; // Never sent
+
+    const lastSent = new Date(reminder.last_sent);
+    const daysSinceLastSent = Math.floor(
+      (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60 * 24)
     );
-  `;
-  return rows as Reminder[];
+
+    return daysSinceLastSent >= reminder.period_days;
+  });
+
+  return remindersToSend;
 }
 
 // Get update logs for a reminder
 export async function getUpdateLogs(reminderId: number): Promise<DueDateUpdateLog[]> {
-  const { rows } = await sql`
-    SELECT * FROM due_date_update_logs 
-    WHERE reminder_id = ${reminderId}
-    ORDER BY updated_at DESC;
-  `;
-  return rows as DueDateUpdateLog[];
+  const { data, error } = await supabase
+    .from('due_date_update_logs')
+    .select('*')
+    .eq('reminder_id', reminderId)
+    .order('updated_at', { ascending: false });
+
+  if (error) throw error;
+  return data as DueDateUpdateLog[];
 }

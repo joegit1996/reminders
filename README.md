@@ -16,7 +16,7 @@ A web application for managing reminders that automatically sends notifications 
 
 - **Frontend**: Next.js 14 with React and TypeScript
 - **Backend**: Next.js API Routes
-- **Database**: Vercel Postgres
+- **Database**: Supabase (PostgreSQL)
 - **Deployment**: Vercel
 - **Scheduling**: Vercel Cron Jobs
 
@@ -30,13 +30,15 @@ cd reminders
 npm install
 ```
 
-### 2. Set Up Vercel Postgres Database
+### 2. Set Up Supabase Database
 
-1. Go to your [Vercel Dashboard](https://vercel.com/dashboard)
-2. Navigate to your project (or create a new one)
-3. Go to the **Storage** tab
-4. Click **Create Database** → Select **Postgres**
-5. Copy the connection strings provided
+1. Go to [Supabase](https://supabase.com) and sign up/login
+2. Create a new project (choose a name and database password)
+3. Wait for the project to be set up (takes ~2 minutes)
+4. Go to **Project Settings** → **API**
+5. Copy your **Project URL** and **anon/public key**
+6. Go to **SQL Editor** → **New Query**
+7. Copy and paste the contents of `supabase-setup.sql` → **Run**
 
 ### 3. Configure Environment Variables
 
@@ -44,24 +46,17 @@ npm install
 1. Go to your project in [Vercel Dashboard](https://vercel.com/dashboard)
 2. Navigate to **Settings** → **Environment Variables**
 3. Add the following variables:
-   - `POSTGRES_URL` - From your Vercel Postgres database
-   - `POSTGRES_PRISMA_URL` - From your Vercel Postgres database
-   - `POSTGRES_URL_NON_POOLING` - From your Vercel Postgres database
+   - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL (from step 2)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anon key (from step 2)
    - `CRON_SECRET` - Generate a random secret: `openssl rand -hex 16`
 
 **For Local Development:**
 Create a `.env.local` file in the root directory:
 
 ```env
-POSTGRES_URL="your_postgres_url"
-POSTGRES_PRISMA_URL="your_prisma_url"
-POSTGRES_URL_NON_POOLING="your_non_pooling_url"
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key-here"
 CRON_SECRET="your-random-secret-here"
-```
-
-For local development, you can also use:
-```env
-DATABASE_URL="your_postgres_url"
 ```
 
 ### 4. Deploy to Vercel
@@ -69,14 +64,13 @@ DATABASE_URL="your_postgres_url"
 ✅ **Already deployed!** The app has been pushed to GitHub and deployed to Vercel.
 
 **Next Steps:**
-1. Set up Vercel Postgres database (see step 2)
-2. Add environment variables in Vercel Dashboard (see step 3)
-3. Redeploy to apply environment variables:
+1. Set up Supabase database (see step 2)
+2. Run the SQL setup script in Supabase SQL Editor (see `supabase-setup.sql`)
+3. Add environment variables in Vercel Dashboard (see step 3)
+4. Redeploy to apply environment variables:
    ```bash
    vercel --prod
    ```
-
-The app will auto-initialize the database tables on first API call.
 
 ### 5. Configure Cron Job
 
