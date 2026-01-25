@@ -240,6 +240,10 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                       lineHeight: '1.5',
                       wordBreak: 'break-word',
                       fontWeight: '600',
+                      maxHeight: isMobile ? 'none' : '200px',
+                      overflowY: isMobile ? 'visible' : 'auto',
+                      overflowX: 'hidden',
+                      paddingRight: isMobile ? '0' : '0.5rem',
                     }}>
                       {reminder.description}
                     </p>
