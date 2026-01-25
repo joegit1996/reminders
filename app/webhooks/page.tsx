@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
 
 interface SavedWebhook {
   id: number;
@@ -121,10 +122,7 @@ export default function WebhooksPage() {
   return (
     <main style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '1rem' : '2rem', width: '100%' }}>
       <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: isMobile ? '1rem' : '2rem',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+        ...neoStyles.card,
         marginBottom: '2rem',
       }}>
         <div style={{ 
@@ -138,42 +136,49 @@ export default function WebhooksPage() {
           <div style={{ flex: 1 }}>
             <h1 style={{
               fontSize: isMobile ? '1.75rem' : '2.5rem',
-              fontWeight: 'bold',
+              fontWeight: '900',
               marginBottom: '0.5rem',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: '#000000',
+              textTransform: 'uppercase',
+              letterSpacing: '-0.02em',
             }}>
-              🔗 Saved Webhooks
+              🔗 SAVED WEBHOOKS
             </h1>
-            <p style={{ color: '#666', fontSize: isMobile ? '0.875rem' : '1rem' }}>Manage your saved Slack webhooks</p>
+            <p style={{ color: '#000000', fontSize: isMobile ? '0.875rem' : '1rem', fontWeight: '600' }}>Manage your saved Slack webhooks</p>
           </div>
           <Link
             href="/"
             style={{
+              ...neoStyles.button,
+              ...buttonVariants.neutral,
               padding: '0.75rem 1.5rem',
-              background: '#e5e7eb',
-              color: '#374151',
-              textDecoration: 'none',
-              borderRadius: '6px',
-              fontWeight: '500',
               fontSize: isMobile ? '0.875rem' : '1rem',
               alignSelf: isMobile ? 'stretch' : 'auto',
               textAlign: 'center',
+              textDecoration: 'none',
+            }}
+            onMouseEnter={(e) => {
+              Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translate(0, 0)';
+              e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
             }}
           >
-            ← Back to Reminders
+            ← BACK TO REMINDERS
           </Link>
         </div>
 
         {error && (
           <div style={{
             padding: '0.75rem',
-            background: '#fee',
-            border: '1px solid #fcc',
-            borderRadius: '6px',
-            color: '#c33',
+            background: '#FF6B6B',
+            border: '3px solid #000000',
+            borderRadius: '0',
+            boxShadow: '4px 4px 0px 0px #000000',
+            color: '#000000',
             marginBottom: '1rem',
+            fontWeight: '700',
           }}>
             {error}
           </div>
@@ -186,35 +191,39 @@ export default function WebhooksPage() {
             setFormData({ name: '', webhookUrl: '' });
           }}
           style={{
+            ...neoStyles.button,
+            ...(showAddForm ? buttonVariants.neutral : buttonVariants.primary),
             padding: '0.75rem 1.5rem',
-            background: showAddForm ? '#e5e7eb' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: showAddForm ? '#374151' : 'white',
-            border: 'none',
-            borderRadius: '6px',
             fontSize: '1rem',
-            fontWeight: '600',
-            cursor: 'pointer',
             marginBottom: '1.5rem',
           }}
+          onMouseEnter={(e) => {
+            Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translate(0, 0)';
+            e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+          }}
         >
-          {showAddForm ? 'Cancel' : '+ Add New Webhook'}
+          {showAddForm ? 'CANCEL' : '+ ADD NEW WEBHOOK'}
         </button>
 
         {showAddForm && (
           <form onSubmit={handleSubmit} style={{
             padding: '1.5rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
+            background: '#FFFFFF',
+            borderRadius: '0',
             marginBottom: '1.5rem',
-            border: '1px solid #e5e7eb',
+            border: '3px solid #000000',
+            boxShadow: '4px 4px 0px 0px #000000',
           }}>
-            <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: '600' }}>
-              {editingId ? 'Edit Webhook' : 'Add New Webhook'}
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: '900', color: '#000000', textTransform: 'uppercase' }}>
+              {editingId ? 'EDIT WEBHOOK' : 'ADD NEW WEBHOOK'}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label htmlFor="name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                  Webhook Name *
+                <label htmlFor="name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+                  WEBHOOK NAME *
                 </label>
                 <input
                   type="text"
@@ -224,17 +233,20 @@ export default function WebhooksPage() {
                   required
                   placeholder="e.g., Project Updates Channel"
                   style={{
+                    ...neoStyles.input,
                     width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
               <div>
-                <label htmlFor="webhookUrl" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-                  Webhook URL *
+                <label htmlFor="webhookUrl" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+                  WEBHOOK URL *
                 </label>
                 <input
                   type="url"
@@ -244,47 +256,54 @@ export default function WebhooksPage() {
                   required
                   placeholder="https://hooks.slack.com/services/..."
                   style={{
+                    ...neoStyles.input,
                     width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.boxShadow = 'none';
                   }}
                 />
               </div>
               <button
                 type="submit"
                 style={{
+                  ...neoStyles.button,
+                  ...buttonVariants.success,
                   padding: '0.75rem 1.5rem',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
                   fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translate(0, 0)';
+                  e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
                 }}
               >
-                {editingId ? 'Update Webhook' : 'Save Webhook'}
+                {editingId ? 'UPDATE WEBHOOK' : 'SAVE WEBHOOK'}
               </button>
             </div>
           </form>
         )}
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>Loading webhooks...</p>
+          <p style={{ textAlign: 'center', color: '#000000', padding: '2rem', fontWeight: '700' }}>LOADING WEBHOOKS...</p>
         ) : webhooks.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '3rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px dashed #e5e7eb',
+            background: '#FFFFFF',
+            borderRadius: '0',
+            border: '3px dashed #000000',
+            boxShadow: '4px 4px 0px 0px #000000',
           }}>
-            <p style={{ fontSize: '1.2rem', color: '#666', marginBottom: '0.5rem' }}>
-              No saved webhooks yet
+            <p style={{ fontSize: '1.2rem', color: '#000000', marginBottom: '0.5rem', fontWeight: '700' }}>
+              NO SAVED WEBHOOKS YET
             </p>
-            <p style={{ color: '#999', fontSize: '0.9rem' }}>
+            <p style={{ color: '#000000', fontSize: '0.9rem', fontWeight: '600' }}>
               Click "Add New Webhook" above to create your first one
             </p>
           </div>
@@ -295,9 +314,10 @@ export default function WebhooksPage() {
                 key={webhook.id}
                 style={{
                   padding: isMobile ? '1rem' : '1.5rem',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  background: 'white',
+                  border: '3px solid #000000',
+                  borderRadius: '0',
+                  background: '#FFFFFF',
+                  boxShadow: '4px 4px 0px 0px #000000',
                   display: 'flex',
                   flexDirection: isMobile ? 'column' : 'row',
                   justifyContent: 'space-between',
@@ -308,17 +328,18 @@ export default function WebhooksPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{ 
                     fontSize: isMobile ? '1rem' : '1.2rem', 
-                    fontWeight: '600', 
+                    fontWeight: '700', 
                     marginBottom: '0.5rem',
                     wordBreak: 'break-word',
+                    color: '#000000',
                   }}>
                     {webhook.name}
                   </h3>
-                  <p style={{ color: '#666', fontSize: isMobile ? '0.8rem' : '0.9rem', wordBreak: 'break-all' }}>
+                  <p style={{ color: '#000000', fontSize: isMobile ? '0.8rem' : '0.9rem', wordBreak: 'break-all', fontWeight: '600' }}>
                     {webhook.webhook_url}
                   </p>
-                  <p style={{ color: '#999', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-                    Created: {new Date(webhook.created_at).toLocaleDateString()}
+                  <p style={{ color: '#000000', fontSize: '0.8rem', marginTop: '0.5rem', fontWeight: '600' }}>
+                    CREATED: {new Date(webhook.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 <div style={{ 
@@ -330,34 +351,40 @@ export default function WebhooksPage() {
                   <button
                     onClick={() => handleEdit(webhook)}
                     style={{
+                      ...neoStyles.button,
+                      ...buttonVariants.primary,
                       padding: '0.5rem 1rem',
-                      background: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
                       fontSize: isMobile ? '0.75rem' : '0.875rem',
-                      cursor: 'pointer',
-                      fontWeight: '500',
                       flex: isMobile ? '1' : '0',
                     }}
+                    onMouseEnter={(e) => {
+                      Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translate(0, 0)';
+                      e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                    }}
                   >
-                    Edit
+                    EDIT
                   </button>
                   <button
                     onClick={() => handleDelete(webhook.id)}
                     style={{
+                      ...neoStyles.button,
+                      ...buttonVariants.danger,
                       padding: '0.5rem 1rem',
-                      background: '#ef4444',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
                       fontSize: isMobile ? '0.75rem' : '0.875rem',
-                      cursor: 'pointer',
-                      fontWeight: '500',
                       flex: isMobile ? '1' : '0',
                     }}
+                    onMouseEnter={(e) => {
+                      Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translate(0, 0)';
+                      e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                    }}
                   >
-                    Delete
+                    DELETE
                   </button>
                 </div>
               </div>
