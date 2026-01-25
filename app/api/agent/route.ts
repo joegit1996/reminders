@@ -431,6 +431,7 @@ export async function POST(request: NextRequest) {
       const finalCompletion = await openai.chat.completions.create({
         model: modelName,
         messages: finalMessages as any,
+        stream: false,
       });
 
       if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
@@ -514,6 +515,7 @@ User: "create reminder for youssef about X"
           },
         })),
         tool_choice: 'auto',
+        stream: false,
       });
 
       if (!completion.choices || completion.choices.length === 0) {
@@ -560,6 +562,7 @@ User: "create reminder for youssef about X"
         const finalCompletion = await openai.chat.completions.create({
           model: modelName,
           messages: finalMessages as any,
+          stream: false,
         });
 
         if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
@@ -691,6 +694,7 @@ User: "create reminder for youssef about X"
             },
           })),
           tool_choice: 'auto',
+          stream: false,
         });
 
         if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
@@ -803,6 +807,7 @@ User: "create reminder for youssef about X"
           const finalTextCompletion = await openai.chat.completions.create({
             model: modelName,
             messages: finalMessagesWithResults as any,
+            stream: false,
           });
 
           if (!finalTextCompletion.choices || finalTextCompletion.choices.length === 0) {
