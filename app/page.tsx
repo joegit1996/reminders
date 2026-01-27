@@ -8,6 +8,7 @@ import ReminderList from '@/components/ReminderList';
 import UpdateDueDateModal from '@/components/UpdateDueDateModal';
 import EditDelayMessageModal from '@/components/EditDelayMessageModal';
 import EditAutomatedMessagesModal from '@/components/EditAutomatedMessagesModal';
+import EditCompletionModal from '@/components/EditCompletionModal';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export interface Reminder {
@@ -28,6 +29,8 @@ export interface Reminder {
     sent: boolean;
     sent_at: string | null;
   }>;
+  completion_message: string | null;
+  completion_webhook: string | null;
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
@@ -40,6 +43,7 @@ export default function Home() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showDelayModal, setShowDelayModal] = useState(false);
   const [showAutomatedMessagesModal, setShowAutomatedMessagesModal] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isSmallMobile = useMediaQuery('(max-width: 480px)');
 
@@ -114,6 +118,17 @@ export default function Home() {
     fetchReminders();
   };
 
+  const handleEditCompletion = (reminder: Reminder) => {
+    setSelectedReminder(reminder);
+    setShowCompletionModal(true);
+  };
+
+  const handleCompletionUpdated = () => {
+    setShowCompletionModal(false);
+    setSelectedReminder(null);
+    fetchReminders();
+  };
+
   return (
     <main style={{ 
       maxWidth: '1200px', 
@@ -145,7 +160,7 @@ export default function Home() {
               textTransform: 'uppercase',
               letterSpacing: '-0.02em',
             }}>
-              📋 REMINDERS
+              📋 ZANAN PRO MAX
             </h1>
             <p style={{ color: '#000000', fontSize: isMobile ? '0.875rem' : '1rem', fontWeight: '600' }}>
               Manage your Slack reminders and never miss a deadline
@@ -254,6 +269,7 @@ export default function Home() {
             onUpdateDueDate={handleUpdateDueDate}
             onEditDelayMessage={handleEditDelayMessage}
             onEditAutomatedMessages={handleEditAutomatedMessages}
+            onEditCompletion={handleEditCompletion}
           />
         )}
       </div>
@@ -288,6 +304,17 @@ export default function Home() {
             setSelectedReminder(null);
           }}
           onUpdated={handleAutomatedMessagesUpdated}
+        />
+      )}
+
+      {showCompletionModal && selectedReminder && (
+        <EditCompletionModal
+          reminder={selectedReminder}
+          onClose={() => {
+            setShowCompletionModal(false);
+            setSelectedReminder(null);
+          }}
+          onUpdated={handleCompletionUpdated}
         />
       )}
     </main>

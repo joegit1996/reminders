@@ -186,7 +186,7 @@ export default function CalendarPage() {
               e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
             }}
           >
-            ← BACK TO REMINDERS
+            ← BACK TO ZANAN PRO MAX
           </Link>
         </div>
 
@@ -255,7 +255,7 @@ export default function CalendarPage() {
               →
             </button>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
             <h2 style={{
               fontSize: isMobile ? '1.25rem' : '1.5rem',
               fontWeight: '900',
@@ -265,11 +265,12 @@ export default function CalendarPage() {
             }}>
               {format(currentDate, 'MMMM yyyy').toUpperCase()}
             </h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: isMobile ? '1 1 100%' : '0 1 auto', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
               <label htmlFor="webhookFilter" style={{
                 fontSize: isMobile ? '0.875rem' : '1rem',
                 fontWeight: '700',
                 color: '#000000',
+                whiteSpace: 'nowrap',
               }}>
                 FILTER:
               </label>
@@ -282,6 +283,11 @@ export default function CalendarPage() {
                   padding: '0.5rem 1rem',
                   fontSize: isMobile ? '0.875rem' : '1rem',
                   cursor: 'pointer',
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                  flex: '1 1 auto',
                 }}
                 onFocus={(e) => {
                   e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;

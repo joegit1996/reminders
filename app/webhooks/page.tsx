@@ -169,7 +169,7 @@ export default function WebhooksPage() {
               e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
             }}
           >
-            ← BACK TO REMINDERS
+            ← BACK TO ZANAN PRO MAX
           </Link>
         </div>
 

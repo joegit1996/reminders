@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Reminders - Slack Task Reminder System',
+  title: 'ZANAN PRO MAX - Slack Task Reminder System',
   description: 'Manage and send reminders to Slack channels',
 }
 

@@ -8,7 +8,7 @@ const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   defaultHeaders: {
     'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
-    'X-Title': 'Reminders App',
+    'X-Title': 'ZANAN PRO MAX',
   },
 });
 
@@ -62,6 +62,14 @@ const functionDefinitions = [
             required: ['days_before', 'title', 'description', 'webhook_url'],
           },
           description: 'Optional array of automated messages to send before due date',
+        },
+        completionMessage: {
+          type: 'string',
+          description: 'Optional message sent when reminder is marked as complete',
+        },
+        completionWebhook: {
+          type: 'string',
+          description: 'Optional webhook URL to send completion message to',
         },
       },
       required: ['text', 'dueDate', 'periodDays', 'slackWebhook'],
@@ -233,7 +241,9 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
         args.description || null,
         args.delayMessage || null,
         args.delayWebhooks || [],
-        []
+        args.automatedMessages || [],
+        args.completionMessage || null,
+        args.completionWebhook || null
       );
       // Send immediate reminder
       const { sendSlackReminder } = await import('@/lib/slack');
