@@ -20,6 +20,8 @@ export interface Reminder {
   delay_message: string | null;
   delay_webhooks: string[];
   automated_messages: AutomatedMessage[];
+  completion_message: { title: string; description: string } | string | null;
+  completion_webhook: string | null;
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
@@ -96,7 +98,9 @@ export async function createReminder(
   description?: string | null,
   delayMessage?: string | null,
   delayWebhooks?: string[],
-  automatedMessages?: AutomatedMessage[]
+  automatedMessages?: AutomatedMessage[],
+  completionMessage?: { title: string; description: string } | string | null,
+  completionWebhook?: string | null
 ): Promise<Reminder> {
   const { data, error } = await supabase
     .from('reminders')
@@ -109,6 +113,8 @@ export async function createReminder(
       delay_message: delayMessage || null,
       delay_webhooks: delayWebhooks || [],
       automated_messages: automatedMessages || [],
+      completion_message: completionMessage || null,
+      completion_webhook: completionWebhook || null,
       is_complete: false,
     })
     .select()
@@ -189,6 +195,12 @@ export async function updateReminderDueDate(
 
 // Mark reminder as complete
 export async function markReminderComplete(id: number): Promise<Reminder> {
+  // Get the reminder first to check for completion webhook
+  const reminder = await getReminderById(id);
+  if (!reminder) {
+    throw new Error('Reminder not found');
+  }
+
   const { data, error } = await supabase
     .from('reminders')
     .update({ is_complete: true })
@@ -197,6 +209,26 @@ export async function markReminderComplete(id: number): Promise<Reminder> {
     .single();
 
   if (error) throw error;
+
+  // Send completion message if configured
+  if (reminder.completion_message && reminder.completion_webhook) {
+    try {
+      const { sendCompletionMessage } = await import('./slack');
+      // Handle both old string format and new object format
+      const completionMsg = typeof reminder.completion_message === 'string'
+        ? reminder.completion_message
+        : reminder.completion_message;
+      await sendCompletionMessage(
+        reminder.text,
+        completionMsg,
+        reminder.completion_webhook
+      );
+    } catch (error) {
+      // Log error but don't fail the completion
+      console.error('Error sending completion message:', error);
+    }
+  }
+
   return data as Reminder;
 }
 
@@ -225,11 +257,14 @@ export async function getRemindersToSend(): Promise<Reminder[]> {
     if (!reminder.last_sent) return true; // Never sent
 
     const lastSent = new Date(reminder.last_sent);
-    const daysSinceLastSent = Math.floor(
-      (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    
+    // Use calendar days (UTC) instead of 24-hour periods
+    // This ensures a reminder sent yesterday at 11 PM fires today at 10 AM
+    const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const lastSentUTC = Date.UTC(lastSent.getUTCFullYear(), lastSent.getUTCMonth(), lastSent.getUTCDate());
+    const calendarDaysSinceLastSent = Math.floor((nowUTC - lastSentUTC) / (1000 * 60 * 60 * 24));
 
-    return daysSinceLastSent >= reminder.period_days;
+    return calendarDaysSinceLastSent >= reminder.period_days;
   });
 
   return remindersToSend;
