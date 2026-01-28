@@ -48,6 +48,8 @@ export const neoStyles = {
     fontWeight: '600',
     background: neoColors.white,
     color: neoColors.black,
+    boxSizing: 'border-box' as const,
+    maxWidth: '100%',
   },
   
   inputFocus: {
@@ -97,6 +99,10 @@ export const buttonVariants = {
   },
   danger: {
     background: neoColors.secondary,
+    color: neoColors.black,
+  },
+  info: {
+    background: neoColors.primary,
     color: neoColors.black,
   },
   neutral: {
