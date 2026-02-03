@@ -40,7 +40,7 @@ const functionDefinitions = [
         },
         dueDate: {
           type: 'string',
-          description: 'Due date in YYYY-MM-DD format',
+          description: 'Due date in YYYY-MM-DD format. Calculate from natural language like "tomorrow", "in 3 days", "next Thursday" relative to today.',
         },
         periodDays: {
           type: 'number',
@@ -680,9 +680,28 @@ export async function POST(request: NextRequest) {
       content: message,
     });
 
+    // Get current date for natural language date parsing
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
+    
     const systemMessage = {
       role: 'system' as const,
       content: `You are a helpful AI assistant for managing reminders.
+
+TODAY'S DATE: ${todayStr} (${dayOfWeek})
+
+DATE INTERPRETATION:
+When the user specifies a due date using natural language, convert it to YYYY-MM-DD format:
+- "tomorrow" = add 1 day to today
+- "in X days" = add X days to today
+- "next [weekday]" = the next occurrence of that weekday (e.g., "next Thursday" means the coming Thursday, or the one after if today is Thursday)
+- "this [weekday]" = the nearest upcoming occurrence of that weekday within this week
+- "in a week" = add 7 days
+- "in 2 weeks" = add 14 days
+- "end of month" = last day of current month
+- "next month" = 1st of next month
+Always calculate dates relative to today: ${todayStr}
 
 CRITICAL INSTRUCTIONS FOR SLACK CHANNEL SELECTION:
 1. ALWAYS call list_slack_channels FIRST before creating any reminder
@@ -696,10 +715,11 @@ DESCRIPTION GUIDELINES:
 - Match the user's tone
 
 Example workflow:
-User: "create reminder for youssef about X"
+User: "create reminder for youssef about X due tomorrow"
 1. Call list_slack_channels
 2. Find DM named "@youssef" or similar
-3. Use that channel's ID and name in create_reminder`,
+3. Calculate tomorrow's date from ${todayStr}
+4. Use that channel's ID, name, and calculated date in create_reminder`,
     };
 
     try {
