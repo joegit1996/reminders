@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     // Send immediate reminder (don't fail the whole request if sending fails)
     try {
       const { sendSlackReminder } = await import('@/lib/slack');
-      const sent = await sendSlackReminder(reminder);
+      const sent = await sendSlackReminder(reminder, supabase);
       if (sent) {
         const { updateLastSent } = await import('@/lib/db');
         await updateLastSent(supabase, reminder.id);

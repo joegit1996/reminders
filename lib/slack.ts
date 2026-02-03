@@ -1,9 +1,9 @@
 import { differenceInDays, format } from 'date-fns';
 import { Reminder, getSlackConnectionByUserId } from './db';
 import { sendInteractiveReminder } from './slack-interactive';
-import { createServiceClient } from './supabase-server';
+import { SupabaseClient } from '@supabase/supabase-js';
 
-export async function sendSlackReminder(reminder: Reminder): Promise<boolean> {
+export async function sendSlackReminder(reminder: Reminder, supabaseClient?: SupabaseClient): Promise<boolean> {
   try {
     const dueDate = new Date(reminder.due_date);
     const today = new Date();
@@ -14,7 +14,11 @@ export async function sendSlackReminder(reminder: Reminder): Promise<boolean> {
     
     // If we have a channel ID, use the Slack API
     if (reminder.slack_channel_id && reminder.user_id) {
-      const supabase = createServiceClient();
+      // Use provided client, or create service client as fallback
+      const supabase = supabaseClient ?? await (async () => {
+        const { createServiceClient } = await import('./supabase-server');
+        return createServiceClient();
+      })();
       const connection = await getSlackConnectionByUserId(supabase, reminder.user_id);
       
       if (!connection || !connection.access_token) {
