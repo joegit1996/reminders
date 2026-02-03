@@ -138,6 +138,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If using Slack channel, validate we can send to it BEFORE creating the reminder
+    if (slackChannelId) {
+      const { getSlackConnectionByUserId } = await import('@/lib/db');
+      const { sendInteractiveReminder } = await import('@/lib/slack-interactive');
+      const { differenceInDays, format } = await import('date-fns');
+      
+      const connection = await getSlackConnectionByUserId(supabase, user.id);
+      if (!connection || !connection.access_token) {
+        return NextResponse.json(
+          { error: 'Slack not connected. Please connect Slack in Settings.' },
+          { status: 400 }
+        );
+      }
+      
+      // Calculate days remaining for preview
+      const dueDateObj = new Date(dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dueDateObj.setHours(0, 0, 0, 0);
+      const daysRemaining = differenceInDays(dueDateObj, today);
+      const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://reminders-liard.vercel.app';
+      
+      // Test sending the message BEFORE creating the reminder
+      const testResult = await sendInteractiveReminder({
+        accessToken: connection.access_token,
+        channelId: slackChannelId,
+        reminderId: 0, // Temporary ID, will be sent again after creation
+        reminderText: text,
+        reminderDescription: description || null,
+        dueDate: format(dueDateObj, 'MMM dd, yyyy'),
+        daysRemaining,
+        appUrl,
+      });
+      
+      if (!testResult.ok) {
+        console.error('[REMINDERS API] Failed to send Slack message:', testResult.error);
+        return NextResponse.json(
+          { error: `Failed to send Slack message: ${testResult.error}. Please check your channel selection.` },
+          { status: 400 }
+        );
+      }
+      
+      console.log('[REMINDERS API] Slack message sent successfully, creating reminder...');
+    }
+
     let reminder;
     try {
       reminder = await createReminder(
@@ -168,19 +213,26 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Send immediate reminder (don't fail the whole request if sending fails)
-    try {
-      const { sendSlackReminder } = await import('@/lib/slack');
-      const sent = await sendSlackReminder(reminder, supabase);
-      if (sent) {
-        const { updateLastSent } = await import('@/lib/db');
-        await updateLastSent(supabase, reminder.id);
-      } else {
-        console.warn('[REMINDERS API] Failed to send Slack reminder, but reminder was created');
+    // If we used channel ID, we already sent the message during validation
+    // Otherwise, send via webhook now
+    if (slackChannelId) {
+      // Already sent, just update last_sent
+      const { updateLastSent } = await import('@/lib/db');
+      await updateLastSent(supabase, reminder.id);
+    } else if (slackWebhook) {
+      // Legacy webhook flow
+      try {
+        const { sendSlackReminder } = await import('@/lib/slack');
+        const sent = await sendSlackReminder(reminder, supabase);
+        if (sent) {
+          const { updateLastSent } = await import('@/lib/db');
+          await updateLastSent(supabase, reminder.id);
+        } else {
+          console.warn('[REMINDERS API] Failed to send Slack reminder via webhook');
+        }
+      } catch (slackError) {
+        console.error('[REMINDERS API] Error sending Slack reminder:', slackError);
       }
-    } catch (slackError) {
-      console.error('[REMINDERS API] Error sending Slack reminder:', slackError);
-      // Don't fail the request - reminder was created successfully
     }
 
     return NextResponse.json(reminder, { status: 201 });

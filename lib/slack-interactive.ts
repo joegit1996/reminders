@@ -102,6 +102,30 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
   ];
 
   try {
+    // For DMs (D...) or user IDs (U...), open a conversation first
+    let targetChannel = channelId;
+    if (channelId.startsWith('D') || channelId.startsWith('U')) {
+      const openResponse = await fetch('https://slack.com/api/conversations.open', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          users: channelId.startsWith('U') ? channelId : undefined,
+          channel: channelId.startsWith('D') ? channelId : undefined,
+        }),
+      });
+      const openResult = await openResponse.json();
+      
+      if (openResult.ok && openResult.channel?.id) {
+        targetChannel = openResult.channel.id;
+        console.log('[SLACK INTERACTIVE] Opened conversation:', targetChannel);
+      } else {
+        console.log('[SLACK INTERACTIVE] conversations.open failed:', openResult.error, '- trying direct send');
+      }
+    }
+    
     const response = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
@@ -109,7 +133,7 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        channel: channelId,
+        channel: targetChannel,
         blocks,
         text: `${statusEmoji} Reminder: ${reminderText}`, // Fallback for notifications
       }),
