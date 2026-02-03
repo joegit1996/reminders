@@ -203,6 +203,17 @@ export default function ChannelSelector({
     );
   }
 
+  // Debug: Log state
+  console.log('[ChannelSelector] State:', { 
+    isConnected, 
+    loading, 
+    error, 
+    conversationsCount: conversations.length,
+    usersCount: users.length,
+    isOpen,
+    searchQuery
+  });
+
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
       {label && (
@@ -252,7 +263,8 @@ export default function ChannelSelector({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setIsOpen(true)}
+            onClick={() => !disabled && setIsOpen(true)}
+            onFocus={() => !disabled && setIsOpen(true)}
             placeholder={placeholder}
             disabled={disabled}
             style={{
@@ -278,7 +290,7 @@ export default function ChannelSelector({
             background: '#FFFFFF',
             border: '3px solid #000000',
             boxShadow: '4px 4px 0px 0px #000000',
-            zIndex: 1000,
+            zIndex: 9999,
             marginTop: '4px',
           }}
         >
@@ -430,11 +442,16 @@ export default function ChannelSelector({
           {/* No results */}
           {filteredItems.conversations.length === 0 && filteredItems.users.length === 0 && (
             <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
-              No results found
+              No results found (Total: {conversations.length} conversations, {users.length} users)
             </div>
           )}
         </div>
       )}
+      
+      {/* Debug indicator - remove after fixing */}
+      <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
+        Debug: {conversations.length} channels, {users.length} users, open: {isOpen ? 'yes' : 'no'}
+      </div>
     </div>
   );
 }
