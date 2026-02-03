@@ -175,40 +175,12 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
                 setDelaySlackChannelId(channelId);
                 setDelaySlackChannelName(channelName);
               }}
-              label="DELAY MESSAGE SLACK CHANNEL (PREFERRED)"
+              label="DELAY MESSAGE SLACK CHANNEL"
               placeholder="Select channel for delay messages..."
             />
-            <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem', marginBottom: '1rem' }}>
-              If set, delay messages will be sent via Slack API. Otherwise, use webhooks below.
+            <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
+              This channel will receive a notification when the due date is updated.
             </small>
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-              DELAY NOTIFICATION WEBHOOKS (LEGACY - SELECT MULTIPLE)
-            </label>
-            <small style={{ color: '#000000', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
-              These webhooks will ONLY receive delay messages when the due date is updated. They are completely separate from the reminder webhook.
-            </small>
-            {savedWebhooks.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', background: '#FFFFFF', border: '3px solid #000000', borderRadius: '0', boxShadow: '4px 4px 0px 0px #000000' }}>
-                {savedWebhooks.map((wh) => (
-                  <label key={wh.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '600', color: '#000000' }}>
-                    <input
-                      type="checkbox"
-                      checked={delayWebhooks.includes(wh.webhook_url)}
-                      onChange={() => handleDelayWebhookToggle(wh.webhook_url)}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <span>{wh.name}</span>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: '#000000', fontSize: '0.875rem', padding: '1rem', background: '#FFFFFF', border: '3px solid #000000', borderRadius: '0', boxShadow: '4px 4px 0px 0px #000000', fontWeight: '600' }}>
-                No saved webhooks. Go to <a href="/webhooks" style={{ color: '#4ECDC4', fontWeight: '700' }}>Manage Webhooks</a> to add some.
-              </p>
-            )}
           </div>
 
           {error && (

@@ -84,8 +84,8 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
       return;
     }
     
-    if (!formData.slack_channel_id && !formData.webhook_url) {
-      setError('Please select a Slack channel or enter a webhook URL');
+    if (!formData.slack_channel_id) {
+      setError('Please select a Slack channel');
       return;
     }
 
@@ -134,8 +134,8 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
       return;
     }
     
-    if (!formData.slack_channel_id && !formData.webhook_url) {
-      setError('Please select a Slack channel or enter a webhook URL');
+    if (!formData.slack_channel_id) {
+      setError('Please select a Slack channel');
       return;
     }
 
@@ -337,62 +337,12 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                   value={formData.slack_channel_id}
                   valueName={formData.slack_channel_name}
                   onChange={(channelId, channelName) => setFormData({ ...formData, slack_channel_id: channelId, slack_channel_name: channelName })}
-                  label="SLACK CHANNEL (PREFERRED)"
+                  label="SLACK CHANNEL *"
                   placeholder="Select channel for this message..."
                 />
                 <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
-                  If set, this message will be sent via Slack API. Otherwise, use webhook below.
+                  This message will be sent to the selected channel.
                 </small>
-              </div>
-              <div>
-                <label htmlFor="webhook_url" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-                  WEBHOOK (LEGACY/FALLBACK)
-                </label>
-                {savedWebhooks.length > 0 && (
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setFormData({ ...formData, webhook_url: e.target.value });
-                      }
-                    }}
-                    value={formData.webhook_url}
-                    style={{
-                      ...neoStyles.input,
-                      width: '100%',
-                      marginBottom: '0.5rem',
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  >
-                    <option value="">Select a saved webhook...</option>
-                    {savedWebhooks.map((wh) => (
-                      <option key={wh.id} value={wh.webhook_url}>
-                        {wh.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <input
-                  type="url"
-                  id="webhook_url"
-                  value={formData.webhook_url}
-                  onChange={(e) => setFormData({ ...formData, webhook_url: e.target.value })}
-                  placeholder="https://hooks.slack.com/services/... or select from saved webhooks above"
-                  style={{
-                    ...neoStyles.input,
-                    width: '100%',
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {editingIndex !== null ? (
@@ -492,8 +442,7 @@ export default function EditAutomatedMessagesModal({ reminder, onClose, onUpdate
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#000000', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontWeight: '600' }}>
                           <span>📅 {msg.days_before} DAY{msg.days_before !== 1 ? 'S' : ''} BEFORE DUE DATE</span>
-                          {msg.slack_channel_name && <span>📢 #{msg.slack_channel_name}</span>}
-                          {msg.webhook_url && <span>🔗 {getWebhookName(msg.webhook_url)}</span>}
+                          {msg.slack_channel_name && <span>📢 {msg.slack_channel_name}</span>}
                           {msg.sent && msg.sent_at && (
                             <span>✓ SENT: {new Date(msg.sent_at).toLocaleDateString()}</span>
                           )}

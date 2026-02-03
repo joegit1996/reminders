@@ -315,138 +315,15 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
       </div>
 
       <div>
-        <label htmlFor="slackWebhook" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-          REMINDER WEBHOOK URL * (FOR PERIODIC REMINDERS)
-        </label>
-        {savedWebhooks.length > 0 && (
-          <select
-            onChange={(e) => {
-              if (e.target.value) {
-                handleWebhookSelect(e.target.value);
-              }
-            }}
-            value={formData.slackWebhook}
-            style={{
-              ...neoStyles.input,
-              width: '100%',
-              marginBottom: '0.5rem',
-            }}
-            onFocus={(e) => {
-              e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-            }}
-            onBlur={(e) => {
-              e.target.style.boxShadow = 'none';
-            }}
-          >
-            <option value="">Select a saved webhook...</option>
-            {savedWebhooks.map((wh) => (
-              <option key={wh.id} value={wh.webhook_url}>
-                {wh.name}
-              </option>
-            ))}
-          </select>
-        )}
-        <input
-          type="url"
-          id="slackWebhook"
-          value={formData.slackWebhook}
-          onChange={(e) => setFormData({ ...formData, slackWebhook: e.target.value })}
-          required
-          placeholder="https://hooks.slack.com/services/... or select from saved webhooks above"
-          style={{
-            ...neoStyles.input,
-            width: '100%',
-          }}
-          onFocus={(e) => {
-            e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-          }}
-          onBlur={(e) => {
-            e.target.style.boxShadow = 'none';
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => setShowAddWebhook(!showAddWebhook)}
-          style={{
-            ...neoStyles.button,
-            ...buttonVariants.neutral,
-            marginTop: '0.5rem',
-            padding: '0.5rem 1rem',
-            fontSize: '0.875rem',
-          }}
-          onMouseEnter={(e) => {
-            Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translate(0, 0)';
-            e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-          }}
-        >
-          {showAddWebhook ? 'CANCEL' : '+ SAVE NEW WEBHOOK'}
-        </button>
-        {showAddWebhook && (
-          <div style={{ marginTop: '0.5rem', padding: '1rem', background: neoStyles.card.background, border: '3px solid #000000', borderRadius: neoStyles.card.borderRadius, boxShadow: '4px 4px 0px 0px #000000' }}>
-            <form onSubmit={handleAddWebhook} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <input
-                type="text"
-                placeholder="Webhook name"
-                value={newWebhookName}
-                onChange={(e) => setNewWebhookName(e.target.value)}
-                required
-                style={{ ...neoStyles.input, padding: '0.5rem' }}
-                onFocus={(e) => {
-                  e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                }}
-                onBlur={(e) => {
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-              <input
-                type="url"
-                placeholder="https://hooks.slack.com/services/..."
-                value={newWebhookUrl}
-                onChange={(e) => setNewWebhookUrl(e.target.value)}
-                required
-                style={{ ...neoStyles.input, padding: '0.5rem' }}
-                onFocus={(e) => {
-                  e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                }}
-                onBlur={(e) => {
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-              <button
-                type="submit"
-                style={{
-                  ...neoStyles.button,
-                  ...buttonVariants.primary,
-                  padding: '0.5rem',
-                }}
-                onMouseEnter={(e) => {
-                  Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translate(0, 0)';
-                  e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                }}
-              >
-                SAVE WEBHOOK
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
-
-      <div>
         <ChannelSelector
           value={formData.slackChannelId}
           valueName={formData.slackChannelName}
           onChange={(channelId, channelName) => setFormData({ ...formData, slackChannelId: channelId, slackChannelName: channelName })}
-          label="REMINDER SLACK CHANNEL (OPTIONAL - USES SLACK API)"
+          label="REMINDER SLACK CHANNEL *"
           placeholder="Select channel for reminders..."
         />
         <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
-          If set, reminders will be sent via Slack API with interactive buttons. Otherwise, the webhook above is used.
+          Reminders will be sent to this channel with interactive buttons.
         </small>
       </div>
 
@@ -499,41 +376,17 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                 The new due date will be automatically appended to your message when sent
               </small>
             </div>
-            <div style={{ marginBottom: '1rem' }}>
+            <div>
               <ChannelSelector
                 value={formData.delaySlackChannelId}
                 valueName={formData.delaySlackChannelName}
                 onChange={(channelId, channelName) => setFormData({ ...formData, delaySlackChannelId: channelId, delaySlackChannelName: channelName })}
-                label="DELAY MESSAGE SLACK CHANNEL (PREFERRED)"
+                label="DELAY MESSAGE SLACK CHANNEL"
                 placeholder="Select channel for delay messages..."
               />
               <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
-                If set, delay messages will be sent via Slack API. Otherwise, use webhooks below.
+                This channel will receive a notification when the due date is updated.
               </small>
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-                DELAY NOTIFICATION WEBHOOKS (LEGACY - SELECT MULTIPLE)
-              </label>
-              <small style={{ color: '#000000', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
-                These webhooks will ONLY receive delay messages when the due date is updated. They are completely separate from the reminder webhook above.
-              </small>
-              {savedWebhooks.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {savedWebhooks.map((wh) => (
-                    <label key={wh.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={formData.delayWebhooks.includes(wh.webhook_url)}
-                        onChange={() => handleDelayWebhookToggle(wh.webhook_url)}
-                      />
-                      <span>{wh.name}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p style={{ color: '#000000', fontSize: '0.875rem', fontWeight: '600' }}>No saved webhooks. Add one above to use delay notifications.</p>
-              )}
             </div>
           </div>
         )}
@@ -647,62 +500,12 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                     value={automatedMessageForm.slack_channel_id}
                     valueName={automatedMessageForm.slack_channel_name}
                     onChange={(channelId, channelName) => setAutomatedMessageForm({ ...automatedMessageForm, slack_channel_id: channelId, slack_channel_name: channelName })}
-                    label="SLACK CHANNEL (PREFERRED)"
+                    label="SLACK CHANNEL *"
                     placeholder="Select channel for this message..."
                   />
                   <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
-                    If set, this message will be sent via Slack API. Otherwise, use webhook below.
+                    This message will be sent to the selected channel.
                   </small>
-                </div>
-                <div>
-                  <label htmlFor="auto_webhook" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-                    WEBHOOK (LEGACY/FALLBACK)
-                  </label>
-                  {savedWebhooks.length > 0 && (
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          setAutomatedMessageForm({ ...automatedMessageForm, webhook_url: e.target.value });
-                        }
-                      }}
-                      value={automatedMessageForm.webhook_url}
-                      style={{
-                        ...neoStyles.input,
-                        width: '100%',
-                        marginBottom: '0.5rem',
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.boxShadow = 'none';
-                      }}
-                    >
-                      <option value="">Select a saved webhook...</option>
-                      {savedWebhooks.map((wh) => (
-                        <option key={wh.id} value={wh.webhook_url}>
-                          {wh.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <input
-                    type="url"
-                    id="auto_webhook"
-                    value={automatedMessageForm.webhook_url}
-                    onChange={(e) => setAutomatedMessageForm({ ...automatedMessageForm, webhook_url: e.target.value })}
-                    placeholder="https://hooks.slack.com/services/... or select from saved webhooks above"
-                    style={{
-                      ...neoStyles.input,
-                      width: '100%',
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  />
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   {editingAutomatedMessageIndex !== null ? (
@@ -775,8 +578,8 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                           setError('Days before, title, and description are required');
                           return;
                         }
-                        if (!automatedMessageForm.slack_channel_id && !automatedMessageForm.webhook_url) {
-                          setError('Please select a Slack channel or enter a webhook URL');
+                        if (!automatedMessageForm.slack_channel_id) {
+                          setError('Please select a Slack channel');
                           return;
                         }
                         const daysBefore = parseInt(automatedMessageForm.days_before);
@@ -829,7 +632,6 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {formData.automatedMessages.map((msg, index) => {
-                    const webhookName = savedWebhooks.find(wh => wh.webhook_url === msg.webhook_url)?.name || msg.webhook_url.substring(0, 30) + '...';
                     return (
                       <div
                         key={msg.id}
@@ -853,8 +655,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                           </div>
                           <div style={{ fontSize: '0.75rem', color: '#000000', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontWeight: '600' }}>
                             <span>📅 {msg.days_before} day{msg.days_before !== 1 ? 's' : ''} before</span>
-                            {msg.slack_channel_name && <span>📢 #{msg.slack_channel_name}</span>}
-                            {msg.webhook_url && <span>🔗 {webhookName}</span>}
+                            {msg.slack_channel_name && <span>📢 {msg.slack_channel_name}</span>}
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -1011,61 +812,12 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                 value={formData.completionSlackChannelId}
                 valueName={formData.completionSlackChannelName}
                 onChange={(channelId, channelName) => setFormData({ ...formData, completionSlackChannelId: channelId, completionSlackChannelName: channelName })}
-                label="COMPLETION MESSAGE SLACK CHANNEL (PREFERRED)"
+                label="COMPLETION MESSAGE SLACK CHANNEL"
                 placeholder="Select channel for completion message..."
               />
               <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
-                If set, completion message will be sent via Slack API. Otherwise, use webhook below.
+                This channel will receive a notification when the reminder is completed.
               </small>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="completionWebhook" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-                COMPLETION WEBHOOK URL (LEGACY/FALLBACK)
-              </label>
-              <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
-                <input
-                  type="text"
-                  id="completionWebhook"
-                  value={formData.completionWebhook}
-                  onChange={(e) => setFormData({ ...formData, completionWebhook: e.target.value })}
-                  placeholder="https://hooks.slack.com/services/..."
-                  style={{
-                    ...neoStyles.input,
-                    width: '100%',
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-                {savedWebhooks.length > 0 && (
-                  <select
-                    value={formData.completionWebhook}
-                    onChange={(e) => setFormData({ ...formData, completionWebhook: e.target.value })}
-                    style={{
-                      ...neoStyles.input,
-                      width: '100%',
-                      cursor: 'pointer',
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  >
-                    <option value="">Select from saved webhooks...</option>
-                    {savedWebhooks.map((webhook) => (
-                      <option key={webhook.id} value={webhook.webhook_url}>
-                        {webhook.name} ({webhook.webhook_url.substring(0, 40)}...)
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
             </div>
 
             <p style={{ fontSize: '0.75rem', fontWeight: '700', marginTop: '1rem', color: '#666666' }}>

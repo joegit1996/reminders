@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
+import ChannelSelector from './ChannelSelector';
 
 interface Reminder {
   id: number;
@@ -13,15 +14,11 @@ interface Reminder {
   slack_webhook: string;
   completion_message: { title: string; description: string } | string | null;
   completion_webhook: string | null;
+  completion_slack_channel_id: string | null;
+  completion_slack_channel_name: string | null;
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
-}
-
-interface SavedWebhook {
-  id: number;
-  name: string;
-  webhook_url: string;
 }
 
 interface EditCompletionModalProps {
@@ -37,26 +34,10 @@ export default function EditCompletionModal({ reminder, onClose, onUpdated }: Ed
     : (reminder.completion_message || { title: '', description: '' });
   const [completionTitle, setCompletionTitle] = useState(completionMsg.title || '');
   const [completionDescription, setCompletionDescription] = useState(completionMsg.description || '');
-  const [completionWebhook, setCompletionWebhook] = useState(reminder.completion_webhook || '');
-  const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
+  const [completionSlackChannelId, setCompletionSlackChannelId] = useState(reminder.completion_slack_channel_id || null);
+  const [completionSlackChannelName, setCompletionSlackChannelName] = useState(reminder.completion_slack_channel_name || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchSavedWebhooks();
-  }, []);
-
-  const fetchSavedWebhooks = async () => {
-    try {
-      const response = await fetch('/api/webhooks');
-      if (response.ok) {
-        const data = await response.json();
-        setSavedWebhooks(data);
-      }
-    } catch (error) {
-      console.error('Error fetching saved webhooks:', error);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +54,8 @@ export default function EditCompletionModal({ reminder, onClose, onUpdated }: Ed
             title: completionTitle || null,
             description: completionDescription || null,
           } : null,
-          completionWebhook: completionWebhook || null,
+          completionSlackChannelId: completionSlackChannelId,
+          completionSlackChannelName: completionSlackChannelName,
         }),
       });
 
@@ -188,57 +170,20 @@ export default function EditCompletionModal({ reminder, onClose, onUpdated }: Ed
           </div>
 
           <div>
-            <label htmlFor="completionWebhook" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-              COMPLETION WEBHOOK URL
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
-              <input
-                type="text"
-                id="completionWebhook"
-                value={completionWebhook}
-                onChange={(e) => setCompletionWebhook(e.target.value)}
-                placeholder="https://hooks.slack.com/services/..."
-                style={{
-                  ...neoStyles.input,
-                  width: '100%',
-                }}
-                onFocus={(e) => {
-                  e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                }}
-                onBlur={(e) => {
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-              {savedWebhooks.length > 0 && (
-                <select
-                  value={completionWebhook}
-                  onChange={(e) => setCompletionWebhook(e.target.value)}
-                  style={{
-                    ...neoStyles.input,
-                    width: '100%',
-                    cursor: 'pointer',
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Select from saved webhooks...</option>
-                  {savedWebhooks.map((webhook) => (
-                    <option key={webhook.id} value={webhook.webhook_url}>
-                      {webhook.name} ({webhook.webhook_url.substring(0, 40)}...)
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
+            <ChannelSelector
+              value={completionSlackChannelId}
+              valueName={completionSlackChannelName}
+              onChange={(channelId, channelName) => {
+                setCompletionSlackChannelId(channelId);
+                setCompletionSlackChannelName(channelName);
+              }}
+              label="COMPLETION MESSAGE SLACK CHANNEL"
+              placeholder="Select channel for completion message..."
+            />
+            <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
+              This channel will receive a notification when the reminder is completed.
+            </small>
           </div>
-
-          <p style={{ fontSize: '0.75rem', fontWeight: '700', marginTop: '0.5rem', color: '#666666' }}>
-            This webhook will ONLY receive completion messages when the reminder is marked as complete. It is completely separate from the reminder webhook and delay webhooks.
-          </p>
 
           {error && (
             <div style={{

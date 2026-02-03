@@ -39,6 +39,7 @@ export default function ChannelSelector({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [needsReconnect, setNeedsReconnect] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -85,6 +86,7 @@ export default function ChannelSelector({
       const data = await response.json();
       setConversations(data.conversations || []);
       setUsers(data.users || []);
+      setNeedsReconnect(data.needs_reconnect || false);
     } catch (err) {
       console.error('Error fetching channels:', err);
       setError('Failed to load channels');
@@ -209,6 +211,19 @@ export default function ChannelSelector({
         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
           {label}
         </label>
+      )}
+      
+      {needsReconnect && (
+        <div style={{
+          padding: '0.5rem 0.75rem',
+          background: '#FFF3CD',
+          border: '2px solid #000000',
+          marginBottom: '0.5rem',
+          fontSize: '0.75rem',
+          fontWeight: '600',
+        }}>
+          ⚠️ DMs and group messages unavailable. <a href="/settings" style={{ color: '#4ECDC4', fontWeight: '700' }}>Reconnect Slack</a> to enable them.
+        </div>
       )}
       
       {/* Selected value display / Search input */}

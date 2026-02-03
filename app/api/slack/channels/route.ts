@@ -199,10 +199,26 @@ export async function GET() {
     // Sort users by name
     users.sort((a, b) => a.name.localeCompare(b.name));
 
+    // Log summary for debugging
+    const dmCount = conversations.filter(c => c.type === 'dm').length;
+    const groupDmCount = conversations.filter(c => c.type === 'group_dm').length;
+    const privateChannelCount = conversations.filter(c => c.type === 'private_channel').length;
+    console.log(`[SLACK CHANNELS] Summary: ${conversations.length} total conversations (${dmCount} DMs, ${groupDmCount} group DMs, ${privateChannelCount} private channels), ${users.length} users`);
+    
+    // If no DMs/users/group DMs, likely missing scopes - user needs to reconnect
+    const needsReconnect = dmCount === 0 && users.length === 0;
+    
     return NextResponse.json({
       conversations,
       users,
       default_channel_id: connection.default_channel_id,
+      needs_reconnect: needsReconnect,
+      debug: {
+        dm_count: dmCount,
+        group_dm_count: groupDmCount,
+        private_channel_count: privateChannelCount,
+        user_count: users.length,
+      }
     });
   } catch (error) {
     console.error('[SLACK CHANNELS] Error fetching channels:', error);
