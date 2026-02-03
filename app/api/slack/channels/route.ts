@@ -244,6 +244,12 @@ export async function GET() {
         group_dm_count: groupDmCount,
         private_channel_count: privateChannelCount,
         user_count: users.length,
+        errors: {
+          dms: dmsData.ok ? null : dmsData.error,
+          mpims: groupDmsData.ok ? null : groupDmsData.error,
+          private_channels: privateChannelsData.ok ? null : privateChannelsData.error,
+          users: usersData.ok ? null : usersData.error,
+        }
       }
     });
   } catch (error) {
