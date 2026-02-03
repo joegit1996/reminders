@@ -203,17 +203,6 @@ export default function ChannelSelector({
     );
   }
 
-  // Debug: Log state
-  console.log('[ChannelSelector] State:', { 
-    isConnected, 
-    loading, 
-    error, 
-    conversationsCount: conversations.length,
-    usersCount: users.length,
-    isOpen,
-    searchQuery
-  });
-
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
       {label && (
@@ -442,16 +431,11 @@ export default function ChannelSelector({
           {/* No results */}
           {filteredItems.conversations.length === 0 && filteredItems.users.length === 0 && (
             <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
-              No results found (Total: {conversations.length} conversations, {users.length} users)
+              No channels or users found
             </div>
           )}
         </div>
       )}
-      
-      {/* Debug indicator - remove after fixing */}
-      <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
-        Debug: {conversations.length} channels, {users.length} users, open: {isOpen ? 'yes' : 'no'}
-      </div>
     </div>
   );
 }

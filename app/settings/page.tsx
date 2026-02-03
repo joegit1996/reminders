@@ -151,8 +151,8 @@ function SettingsContent() {
           </h2>
           <ol style={{ margin: 0, paddingLeft: '1.25rem', lineHeight: '1.8' }}>
             <li><strong>Connect Slack</strong> - Click "Add to Slack" to authorize the app</li>
-            <li><strong>Select a Channel</strong> - Choose where reminders should be sent</li>
             <li><strong>Create Reminders</strong> - Go back to the main page and create reminders</li>
+            <li><strong>Select Channels</strong> - Choose where each reminder/message should be sent</li>
             <li><strong>Receive Notifications</strong> - Get reminders in Slack with interactive buttons</li>
             <li><strong>Mark Complete</strong> - Click the button in Slack to mark a reminder done</li>
           </ol>

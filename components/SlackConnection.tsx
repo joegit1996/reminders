@@ -8,23 +8,11 @@ interface SlackConnectionStatus {
   connected: boolean;
   team_id?: string;
   team_name?: string;
-  default_channel_id?: string;
-  default_channel_name?: string;
-}
-
-interface Channel {
-  id: string;
-  name: string;
-  is_private: boolean;
-  is_member: boolean;
 }
 
 export default function SlackConnection() {
   const [status, setStatus] = useState<SlackConnectionStatus | null>(null);
-  const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [channelsLoading, setChannelsLoading] = useState(false);
-  const [showChannelSelector, setShowChannelSelector] = useState(false);
   const [error, setError] = useState('');
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -47,21 +35,6 @@ export default function SlackConnection() {
     }
   };
 
-  const fetchChannels = async () => {
-    try {
-      setChannelsLoading(true);
-      const res = await fetch('/api/slack/channels');
-      const data = await res.json();
-      if (data.channels) {
-        setChannels(data.channels);
-      }
-    } catch (err) {
-      console.error('Error fetching channels:', err);
-    } finally {
-      setChannelsLoading(false);
-    }
-  };
-
   const handleDisconnect = async () => {
     if (!confirm('Disconnect Slack? You won\'t receive Slack reminders until you reconnect.')) {
       return;
@@ -74,34 +47,6 @@ export default function SlackConnection() {
       console.error('Error disconnecting Slack:', err);
       setError('Failed to disconnect Slack');
     }
-  };
-
-  const handleSelectChannel = async (channel: Channel) => {
-    try {
-      const res = await fetch('/api/slack/channels', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          channelId: channel.id,
-          channelName: channel.name,
-        }),
-      });
-
-      if (res.ok) {
-        setShowChannelSelector(false);
-        fetchStatus();
-      } else {
-        setError('Failed to set default channel');
-      }
-    } catch (err) {
-      console.error('Error setting channel:', err);
-      setError('Failed to set default channel');
-    }
-  };
-
-  const openChannelSelector = () => {
-    setShowChannelSelector(true);
-    fetchChannels();
   };
 
   if (loading) {
@@ -133,156 +78,36 @@ export default function SlackConnection() {
           </div>
         </div>
 
-        {status.default_channel_name ? (
-          <div style={{
-            padding: '0.75rem',
-            background: '#E8F5E9',
-            border: '2px solid #000',
-            marginBottom: '1rem',
-          }}>
-            <p style={{ fontWeight: '700', margin: 0, fontSize: '0.875rem' }}>
-              DEFAULT CHANNEL: #{status.default_channel_name}
-            </p>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#666' }}>
-              Reminders will be sent to this channel unless overridden.
-            </p>
-          </div>
-        ) : (
-          <div style={{
-            padding: '0.75rem',
-            background: '#FFF3E0',
-            border: '2px solid #000',
-            marginBottom: '1rem',
-          }}>
-            <p style={{ fontWeight: '700', margin: 0, fontSize: '0.875rem' }}>
-              ⚠️ NO DEFAULT CHANNEL SET
-            </p>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#666' }}>
-              Please select a channel to receive reminders.
-            </p>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button
-            onClick={openChannelSelector}
-            style={{
-              ...neoStyles.button,
-              ...buttonVariants.primary,
-              padding: '0.75rem 1rem',
-              fontSize: '0.875rem',
-            }}
-            onMouseEnter={(e) => Object.assign(e.currentTarget.style, neoStyles.buttonHover)}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translate(0, 0)';
-              e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-            }}
-          >
-            {status.default_channel_name ? 'CHANGE CHANNEL' : 'SELECT CHANNEL'}
-          </button>
-          <button
-            onClick={handleDisconnect}
-            style={{
-              ...neoStyles.button,
-              ...buttonVariants.danger,
-              padding: '0.75rem 1rem',
-              fontSize: '0.875rem',
-            }}
-            onMouseEnter={(e) => Object.assign(e.currentTarget.style, neoStyles.buttonHover)}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translate(0, 0)';
-              e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-            }}
-          >
-            DISCONNECT
-          </button>
+        <div style={{
+          padding: '0.75rem',
+          background: '#E8F5E9',
+          border: '2px solid #000',
+          marginBottom: '1rem',
+        }}>
+          <p style={{ fontWeight: '700', margin: 0, fontSize: '0.875rem' }}>
+            ✓ READY TO SEND REMINDERS
+          </p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#666' }}>
+            Select channels when creating reminders. You can send to public channels, private channels, DMs, and group DMs.
+          </p>
         </div>
 
-        {/* Channel Selector Modal */}
-        {showChannelSelector && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-              padding: '1rem',
-            }}
-            onClick={() => setShowChannelSelector(false)}
-          >
-            <div
-              style={{
-                ...neoStyles.card,
-                maxWidth: '500px',
-                width: '100%',
-                maxHeight: '80vh',
-                overflow: 'auto',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 style={{ ...neoStyles.heading, fontSize: '1.25rem', marginBottom: '1rem' }}>
-                SELECT CHANNEL
-              </h3>
-
-              {channelsLoading ? (
-                <p style={{ fontWeight: '700' }}>Loading channels...</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {channels.map((channel) => (
-                    <button
-                      key={channel.id}
-                      onClick={() => handleSelectChannel(channel)}
-                      style={{
-                        ...neoStyles.button,
-                        background: channel.id === status.default_channel_id ? neoColors.success : neoColors.white,
-                        padding: '0.75rem 1rem',
-                        textAlign: 'left',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                      }}
-                      onMouseEnter={(e) => Object.assign(e.currentTarget.style, neoStyles.buttonHover)}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translate(0, 0)';
-                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                      }}
-                    >
-                      <span>{channel.is_private ? '🔒' : '#'}</span>
-                      <span style={{ fontWeight: '700' }}>{channel.name}</span>
-                      {channel.id === status.default_channel_id && (
-                        <span style={{ marginLeft: 'auto', fontSize: '0.75rem' }}>✓ CURRENT</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <button
-                onClick={() => setShowChannelSelector(false)}
-                style={{
-                  ...neoStyles.button,
-                  ...buttonVariants.secondary,
-                  width: '100%',
-                  marginTop: '1rem',
-                  padding: '0.75rem',
-                }}
-                onMouseEnter={(e) => Object.assign(e.currentTarget.style, neoStyles.buttonHover)}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translate(0, 0)';
-                  e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                }}
-              >
-                CANCEL
-              </button>
-            </div>
-          </div>
-        )}
+        <button
+          onClick={handleDisconnect}
+          style={{
+            ...neoStyles.button,
+            ...buttonVariants.danger,
+            padding: '0.75rem 1rem',
+            fontSize: '0.875rem',
+          }}
+          onMouseEnter={(e) => Object.assign(e.currentTarget.style, neoStyles.buttonHover)}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translate(0, 0)';
+            e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+          }}
+        >
+          DISCONNECT SLACK
+        </button>
 
         {error && (
           <div style={{
@@ -355,9 +180,12 @@ export default function SlackConnection() {
           WHAT PERMISSIONS ARE NEEDED?
         </p>
         <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem', lineHeight: '1.6' }}>
-          <li><strong>chat:write</strong> - Send reminder messages to channels</li>
-          <li><strong>channels:read</strong> - List available public channels</li>
-          <li><strong>groups:read</strong> - List available private channels</li>
+          <li><strong>chat:write</strong> - Send reminder messages</li>
+          <li><strong>channels:read</strong> - List public channels</li>
+          <li><strong>groups:read</strong> - List private channels</li>
+          <li><strong>im:read/write</strong> - Read and send direct messages</li>
+          <li><strong>mpim:read/write</strong> - Read and send group messages</li>
+          <li><strong>users:read</strong> - List users for DM selection</li>
         </ul>
       </div>
 
