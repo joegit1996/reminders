@@ -138,38 +138,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const reminder = await createReminder(
-      supabase,
-      user.id,
-      text,
-      dueDate,
-      periodDays,
-      slackWebhook || '',
-      description || null,
-      delayMessage || null,
-      delayWebhooks || [],
-      automatedMessages || [],
-      completionMessage || null,
-      completionWebhook || null,
-      slackChannelId || null,
-      slackChannelName || null,
-      delaySlackChannelId || null,
-      delaySlackChannelName || null,
-      completionSlackChannelId || null,
-      completionSlackChannelName || null
-    );
+    let reminder;
+    try {
+      reminder = await createReminder(
+        supabase,
+        user.id,
+        text,
+        dueDate,
+        periodDays,
+        slackWebhook || '',
+        description || null,
+        delayMessage || null,
+        delayWebhooks || [],
+        automatedMessages || [],
+        completionMessage || null,
+        completionWebhook || null,
+        slackChannelId || null,
+        slackChannelName || null,
+        delaySlackChannelId || null,
+        delaySlackChannelName || null,
+        completionSlackChannelId || null,
+        completionSlackChannelName || null
+      );
+    } catch (dbError) {
+      console.error('[REMINDERS API] Database error creating reminder:', dbError);
+      return NextResponse.json(
+        { error: 'Failed to save reminder to database', details: String(dbError) },
+        { status: 500 }
+      );
+    }
     
-    // Send immediate reminder
-    const { sendSlackReminder } = await import('@/lib/slack');
-    await sendSlackReminder(reminder);
-    const { updateLastSent } = await import('@/lib/db');
-    await updateLastSent(supabase, reminder.id);
+    // Send immediate reminder (don't fail the whole request if sending fails)
+    try {
+      const { sendSlackReminder } = await import('@/lib/slack');
+      const sent = await sendSlackReminder(reminder);
+      if (sent) {
+        const { updateLastSent } = await import('@/lib/db');
+        await updateLastSent(supabase, reminder.id);
+      } else {
+        console.warn('[REMINDERS API] Failed to send Slack reminder, but reminder was created');
+      }
+    } catch (slackError) {
+      console.error('[REMINDERS API] Error sending Slack reminder:', slackError);
+      // Don't fail the request - reminder was created successfully
+    }
 
     return NextResponse.json(reminder, { status: 201 });
   } catch (error) {
-    console.error('Error creating reminder:', error);
+    console.error('[REMINDERS API] Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Failed to create reminder' },
+      { error: 'Failed to create reminder', details: String(error) },
       { status: 500 }
     );
   }

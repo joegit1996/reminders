@@ -101,10 +101,23 @@ export default function ChannelSelector({
       return { conversations, users };
     }
 
+    // Split query into words for multi-word search (e.g., "khaled sami")
+    const queryWords = query.split(/\s+/).filter(w => w.length > 0);
+
     return {
-      conversations: conversations.filter(c => 
-        c.name.toLowerCase().includes(query)
-      ),
+      conversations: conversations.filter(c => {
+        const nameLower = c.name.toLowerCase();
+        
+        // For group DMs, allow searching by multiple participant names
+        // e.g., "khaled sami" should match "Group messaging with: @khaled.gomaa @mohammed.sami"
+        if (c.type === 'group_dm' && queryWords.length > 1) {
+          // Check if all query words are found in the name
+          return queryWords.every(word => nameLower.includes(word));
+        }
+        
+        // For single word or other types, use simple includes
+        return nameLower.includes(query);
+      }),
       users: users.filter(u => 
         u.name.toLowerCase().includes(query)
       ),
