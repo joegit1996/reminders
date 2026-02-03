@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
       const reminderId = parseInt(action.value);
       
       try {
+        console.log('[SLACK INTERACTIONS] Processing mark_complete for reminder:', reminderId, 'team:', team?.id);
+        
         // SECURITY FIX: Verify the Slack team matches the reminder owner's connection
         const reminder = await getReminderById(supabase, reminderId);
         if (!reminder) {
@@ -51,25 +53,28 @@ export async function POST(request: NextRequest) {
           await sendEphemeralError(response_url, 'Reminder not found.');
           return NextResponse.json({ ok: true });
         }
+        console.log('[SLACK INTERACTIONS] Found reminder:', reminderId, 'user_id:', reminder.user_id);
 
         // Get the Slack connection for this team
-        const connection = await getSlackConnectionByTeamId(supabase, team.id);
+        const connection = await getSlackConnectionByTeamId(supabase, team?.id);
         if (!connection) {
-          console.error('[SLACK INTERACTIONS] No connection found for team:', team.id);
+          console.error('[SLACK INTERACTIONS] No connection found for team:', team?.id);
           await sendEphemeralError(response_url, 'This workspace is not connected to the app.');
           return NextResponse.json({ ok: true });
         }
+        console.log('[SLACK INTERACTIONS] Found connection for team:', team?.id, 'user_id:', connection.user_id);
 
         // Verify the reminder belongs to the user who owns this Slack connection
         if (reminder.user_id !== connection.user_id) {
-          console.error('[SLACK INTERACTIONS] Unauthorized: reminder user_id does not match connection user_id');
+          console.error('[SLACK INTERACTIONS] Unauthorized: reminder user_id', reminder.user_id, 'does not match connection user_id', connection.user_id);
           await sendEphemeralError(response_url, 'You can only complete your own reminders.');
           return NextResponse.json({ ok: true });
         }
 
         // Mark the reminder as complete
+        console.log('[SLACK INTERACTIONS] Marking reminder complete:', reminderId);
         await markReminderComplete(supabase, reminderId);
-        console.log('[SLACK INTERACTIONS] Reminder marked complete:', reminderId);
+        console.log('[SLACK INTERACTIONS] Reminder marked complete successfully:', reminderId);
 
         // Update the original message to show it's completed
         await fetch(response_url, {
@@ -91,7 +96,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ ok: true });
       } catch (error) {
-        console.error('[SLACK INTERACTIONS] Error marking complete:', error);
+        console.error('[SLACK INTERACTIONS] Error marking complete:', error instanceof Error ? error.message : error, error instanceof Error ? error.stack : '');
         await sendEphemeralError(response_url, 'Failed to mark reminder as complete. Please try again.');
         return NextResponse.json({ ok: true });
       }

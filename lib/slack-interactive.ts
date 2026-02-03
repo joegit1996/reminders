@@ -55,7 +55,7 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
       type: 'header',
       text: {
         type: 'plain_text',
-        text: `${statusEmoji} Reminder`,
+        text: 'Automated Message - Followup',
         emoji: true,
       },
     },
