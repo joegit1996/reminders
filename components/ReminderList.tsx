@@ -14,19 +14,26 @@ interface Reminder {
   period_days: number;
   slack_webhook: string;
   slack_channel_id: string | null;
+  slack_channel_name: string | null;
   delay_message: string | null;
   delay_webhooks: string[];
+  delay_slack_channel_id: string | null;
+  delay_slack_channel_name: string | null;
   automated_messages: Array<{
     id: string;
     days_before: number;
     title: string;
     description: string;
     webhook_url: string;
+    slack_channel_id: string | null;
+    slack_channel_name: string | null;
     sent: boolean;
     sent_at: string | null;
   }>;
   completion_message: string | null;
   completion_webhook: string | null;
+  completion_slack_channel_id: string | null;
+  completion_slack_channel_name: string | null;
   is_complete: boolean;
   completed_at: string | null;
   days_remaining_at_completion: number | null;
