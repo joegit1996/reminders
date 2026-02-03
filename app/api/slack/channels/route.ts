@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { getSlackConnection, updateSlackConnectionChannel } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
+interface SlackUser {
+  id: string;
+  name: string;
+  real_name?: string;
+  profile?: {
+    display_name?: string;
+    real_name?: string;
+  };
+  is_bot?: boolean;
+  deleted?: boolean;
+}
+
+interface ConversationItem {
+  id: string;
+  name: string;
+  type: 'channel' | 'private_channel' | 'dm' | 'group_dm';
+  is_private: boolean;
+  is_member: boolean;
+}
+
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -16,43 +38,161 @@ export async function GET() {
       return NextResponse.json({ error: 'Slack not connected' }, { status: 400 });
     }
 
+    const conversations: ConversationItem[] = [];
+
     // Fetch public channels
     const publicChannelsResponse = await fetch(
-      'https://slack.com/api/conversations.list?types=public_channel&limit=200',
+      'https://slack.com/api/conversations.list?types=public_channel&limit=500&exclude_archived=true',
       {
         headers: {
           Authorization: `Bearer ${connection.access_token}`,
         },
       }
     );
-
     const publicChannelsData = await publicChannelsResponse.json();
+    
+    if (publicChannelsData.ok && publicChannelsData.channels) {
+      for (const channel of publicChannelsData.channels) {
+        conversations.push({
+          id: channel.id,
+          name: channel.name,
+          type: 'channel',
+          is_private: false,
+          is_member: channel.is_member || false,
+        });
+      }
+    }
 
-    // Fetch private channels (groups)
+    // Fetch private channels
     const privateChannelsResponse = await fetch(
-      'https://slack.com/api/conversations.list?types=private_channel&limit=200',
+      'https://slack.com/api/conversations.list?types=private_channel&limit=500&exclude_archived=true',
       {
         headers: {
           Authorization: `Bearer ${connection.access_token}`,
         },
       }
     );
-
     const privateChannelsData = await privateChannelsResponse.json();
+    
+    if (privateChannelsData.ok && privateChannelsData.channels) {
+      for (const channel of privateChannelsData.channels) {
+        conversations.push({
+          id: channel.id,
+          name: channel.name,
+          type: 'private_channel',
+          is_private: true,
+          is_member: channel.is_member || false,
+        });
+      }
+    }
 
-    // Combine channels
-    const channels = [
-      ...(publicChannelsData.ok ? publicChannelsData.channels : []),
-      ...(privateChannelsData.ok ? privateChannelsData.channels : []),
-    ].map((channel: any) => ({
-      id: channel.id,
-      name: channel.name,
-      is_private: channel.is_private,
-      is_member: channel.is_member,
-    })).sort((a: any, b: any) => a.name.localeCompare(b.name));
+    // Fetch DMs (im = direct messages with single users)
+    const dmsResponse = await fetch(
+      'https://slack.com/api/conversations.list?types=im&limit=500',
+      {
+        headers: {
+          Authorization: `Bearer ${connection.access_token}`,
+        },
+      }
+    );
+    const dmsData = await dmsResponse.json();
+
+    // Fetch group DMs (mpim = multi-person instant messages)
+    const groupDmsResponse = await fetch(
+      'https://slack.com/api/conversations.list?types=mpim&limit=500',
+      {
+        headers: {
+          Authorization: `Bearer ${connection.access_token}`,
+        },
+      }
+    );
+    const groupDmsData = await groupDmsResponse.json();
+
+    // Fetch users to get names for DMs
+    const usersResponse = await fetch(
+      'https://slack.com/api/users.list?limit=500',
+      {
+        headers: {
+          Authorization: `Bearer ${connection.access_token}`,
+        },
+      }
+    );
+    const usersData = await usersResponse.json();
+    
+    // Create a map of user IDs to names
+    const userMap = new Map<string, string>();
+    if (usersData.ok && usersData.members) {
+      for (const user of usersData.members as SlackUser[]) {
+        if (!user.deleted && !user.is_bot) {
+          const displayName = user.profile?.display_name || user.profile?.real_name || user.real_name || user.name;
+          userMap.set(user.id, displayName);
+        }
+      }
+    }
+
+    // Add DMs with user names
+    if (dmsData.ok && dmsData.channels) {
+      for (const dm of dmsData.channels) {
+        const userName = userMap.get(dm.user) || 'Unknown User';
+        conversations.push({
+          id: dm.id,
+          name: userName,
+          type: 'dm',
+          is_private: true,
+          is_member: true,
+        });
+      }
+    }
+
+    // Add group DMs
+    if (groupDmsData.ok && groupDmsData.channels) {
+      for (const groupDm of groupDmsData.channels) {
+        // Group DMs have a name like "mpdm-user1--user2--user3-1"
+        // We'll use the purpose or create a friendly name from member names
+        let name = groupDm.name || 'Group DM';
+        if (groupDm.purpose?.value) {
+          name = groupDm.purpose.value;
+        }
+        conversations.push({
+          id: groupDm.id,
+          name: name,
+          type: 'group_dm',
+          is_private: true,
+          is_member: true,
+        });
+      }
+    }
+
+    // Also add individual users as options (for creating new DMs)
+    const users: Array<{ id: string; name: string; type: 'user' }> = [];
+    if (usersData.ok && usersData.members) {
+      for (const slackUser of usersData.members as SlackUser[]) {
+        if (!slackUser.deleted && !slackUser.is_bot && slackUser.id !== connection.bot_user_id) {
+          const displayName = slackUser.profile?.display_name || slackUser.profile?.real_name || slackUser.real_name || slackUser.name;
+          users.push({
+            id: slackUser.id,
+            name: displayName,
+            type: 'user',
+          });
+        }
+      }
+    }
+
+    // Sort conversations by type then name
+    conversations.sort((a, b) => {
+      const typeOrder = { channel: 0, private_channel: 1, group_dm: 2, dm: 3 };
+      if (typeOrder[a.type] !== typeOrder[b.type]) {
+        return typeOrder[a.type] - typeOrder[b.type];
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    // Sort users by name
+    users.sort((a, b) => a.name.localeCompare(b.name));
 
     return NextResponse.json({
-      channels,
+      conversations,
+      users,
       default_channel_id: connection.default_channel_id,
     });
   } catch (error) {
