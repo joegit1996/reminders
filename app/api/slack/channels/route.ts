@@ -110,6 +110,16 @@ export async function GET() {
       }
     );
     const groupDmsData = await groupDmsResponse.json();
+    console.log('[SLACK CHANNELS] MPIM response:', JSON.stringify({
+      ok: groupDmsData.ok,
+      error: groupDmsData.error,
+      channelCount: groupDmsData.channels?.length || 0,
+      channels: groupDmsData.channels?.slice(0, 3).map((c: { id: string; name: string; is_mpim: boolean }) => ({ 
+        id: c.id, 
+        name: c.name, 
+        is_mpim: c.is_mpim 
+      }))
+    }));
     if (!groupDmsData.ok) {
       console.log('[SLACK CHANNELS] Group DMs fetch failed:', groupDmsData.error);
     }
@@ -155,13 +165,27 @@ export async function GET() {
 
     // Add group DMs
     if (groupDmsData.ok && groupDmsData.channels) {
+      console.log(`[SLACK CHANNELS] Processing ${groupDmsData.channels.length} MPIMs`);
       for (const groupDm of groupDmsData.channels) {
         // Group DMs have a name like "mpdm-user1--user2--user3-1"
-        // We'll use the purpose or create a friendly name from member names
+        // Try to get a friendly name from purpose or member names
         let name = groupDm.name || 'Group DM';
-        if (groupDm.purpose?.value) {
+        
+        // Try to get member names if available
+        if (groupDm.members && groupDm.members.length > 0 && userMap.size > 0) {
+          const memberNames = groupDm.members
+            .filter((m: string) => m !== connection.bot_user_id)
+            .map((m: string) => userMap.get(m) || m)
+            .slice(0, 4)
+            .join(', ');
+          if (memberNames) {
+            name = memberNames;
+          }
+        } else if (groupDm.purpose?.value) {
           name = groupDm.purpose.value;
         }
+        
+        console.log(`[SLACK CHANNELS] Adding MPIM: ${groupDm.id} -> ${name}`);
         conversations.push({
           id: groupDm.id,
           name: name,
@@ -170,6 +194,8 @@ export async function GET() {
           is_member: true,
         });
       }
+    } else {
+      console.log('[SLACK CHANNELS] No MPIMs to add (ok:', groupDmsData.ok, ', channels:', !!groupDmsData.channels, ')');
     }
 
     // Also add individual users as options (for creating new DMs)
