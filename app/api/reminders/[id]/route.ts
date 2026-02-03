@@ -72,6 +72,8 @@ export async function PATCH(
     }
 
     if (action === 'update-delay-config') {
+      const { delaySlackChannelId, delaySlackChannelName } = body;
+      
       // Validate delay webhooks if provided
       if (delayWebhooks && Array.isArray(delayWebhooks)) {
         for (const webhook of delayWebhooks) {
@@ -97,6 +99,8 @@ export async function PATCH(
         .update({
           delay_message: delayMessage || null,
           delay_webhooks: delayWebhooks || [],
+          delay_slack_channel_id: delaySlackChannelId || null,
+          delay_slack_channel_name: delaySlackChannelName || null,
         })
         .eq('id', id)
         .select()
@@ -112,13 +116,20 @@ export async function PATCH(
       // Validate automated messages if provided
       if (automatedMessages && Array.isArray(automatedMessages)) {
         for (const msg of automatedMessages) {
-          if (!msg.days_before || !msg.title || !msg.description || !msg.webhook_url) {
+          if (!msg.days_before || !msg.title || !msg.description) {
             return NextResponse.json(
-              { error: 'Automated messages must have days_before, title, description, and webhook_url' },
+              { error: 'Automated messages must have days_before, title, and description' },
               { status: 400 }
             );
           }
-          if (!msg.webhook_url.startsWith('https://hooks.slack.com/')) {
+          // Either webhook_url or slack_channel_id must be provided
+          if (!msg.webhook_url && !msg.slack_channel_id) {
+            return NextResponse.json(
+              { error: 'Automated messages must have either webhook_url or slack_channel_id' },
+              { status: 400 }
+            );
+          }
+          if (msg.webhook_url && !msg.webhook_url.startsWith('https://hooks.slack.com/')) {
             return NextResponse.json(
               { error: 'Invalid automated message webhook URL' },
               { status: 400 }
@@ -155,6 +166,8 @@ export async function PATCH(
     }
 
     if (action === 'update-completion-config') {
+      const { completionSlackChannelId, completionSlackChannelName } = body;
+      
       // Validate completion webhook if provided
       if (completionWebhook && !completionWebhook.startsWith('https://hooks.slack.com/')) {
         return NextResponse.json(
@@ -176,6 +189,8 @@ export async function PATCH(
         .update({
           completion_message: completionMessage || null,
           completion_webhook: completionWebhook || null,
+          completion_slack_channel_id: completionSlackChannelId || null,
+          completion_slack_channel_name: completionSlackChannelName || null,
         })
         .eq('id', id)
         .select()

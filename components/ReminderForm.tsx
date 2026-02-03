@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
+import ChannelSelector from './ChannelSelector';
 
 interface SavedWebhook {
   id: number;
@@ -32,20 +33,28 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
     dueDate: getTodayDate(),
     periodDays: '1',
     slackWebhook: '',
+    slackChannelId: null as string | null,
+    slackChannelName: null as string | null,
     delayMessage: '',
     delayWebhooks: [] as string[],
+    delaySlackChannelId: null as string | null,
+    delaySlackChannelName: null as string | null,
     automatedMessages: [] as Array<{
       id: string;
       days_before: number;
       title: string;
       description: string;
       webhook_url: string;
+      slack_channel_id: string | null;
+      slack_channel_name: string | null;
       sent: boolean;
       sent_at: string | null;
     }>,
     completionTitle: '',
     completionDescription: '',
     completionWebhook: '',
+    completionSlackChannelId: null as string | null,
+    completionSlackChannelName: null as string | null,
   });
   const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
   const [showDelayConfig, setShowDelayConfig] = useState(false);
@@ -59,6 +68,8 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
     title: '',
     description: '',
     webhook_url: '',
+    slack_channel_id: null as string | null,
+    slack_channel_name: null as string | null,
   });
   const [editingAutomatedMessageIndex, setEditingAutomatedMessageIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -136,14 +147,20 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
           dueDate: formData.dueDate,
           periodDays: parseInt(formData.periodDays),
           slackWebhook: formData.slackWebhook,
+          slackChannelId: formData.slackChannelId,
+          slackChannelName: formData.slackChannelName,
           delayMessage: formData.delayMessage || null,
           delayWebhooks: formData.delayWebhooks.length > 0 ? formData.delayWebhooks : [],
+          delaySlackChannelId: formData.delaySlackChannelId,
+          delaySlackChannelName: formData.delaySlackChannelName,
           automatedMessages: formData.automatedMessages,
           completionMessage: formData.completionTitle || formData.completionDescription ? {
             title: formData.completionTitle || null,
             description: formData.completionDescription || null,
           } : null,
           completionWebhook: formData.completionWebhook || null,
+          completionSlackChannelId: formData.completionSlackChannelId,
+          completionSlackChannelName: formData.completionSlackChannelName,
         }),
       });
 
@@ -159,18 +176,26 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
         dueDate: getTodayDate(),
         periodDays: '1',
         slackWebhook: '',
+        slackChannelId: null,
+        slackChannelName: null,
         delayMessage: '',
         delayWebhooks: [],
+        delaySlackChannelId: null,
+        delaySlackChannelName: null,
         automatedMessages: [],
         completionTitle: '',
         completionDescription: '',
         completionWebhook: '',
+        completionSlackChannelId: null,
+        completionSlackChannelName: null,
       });
       setAutomatedMessageForm({
         days_before: '',
         title: '',
         description: '',
         webhook_url: '',
+        slack_channel_id: null,
+        slack_channel_name: null,
       });
       setShowAutomatedMessages(false);
       setShowDelayConfig(false);
@@ -413,6 +438,19 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
       </div>
 
       <div>
+        <ChannelSelector
+          value={formData.slackChannelId}
+          valueName={formData.slackChannelName}
+          onChange={(channelId, channelName) => setFormData({ ...formData, slackChannelId: channelId, slackChannelName: channelName })}
+          label="REMINDER SLACK CHANNEL (OPTIONAL - USES SLACK API)"
+          placeholder="Select channel for reminders..."
+        />
+        <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
+          If set, reminders will be sent via Slack API with interactive buttons. Otherwise, the webhook above is used.
+        </small>
+      </div>
+
+      <div>
         <button
           type="button"
           onClick={() => setShowDelayConfig(!showDelayConfig)}
@@ -461,9 +499,21 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                 The new due date will be automatically appended to your message when sent
               </small>
             </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <ChannelSelector
+                value={formData.delaySlackChannelId}
+                valueName={formData.delaySlackChannelName}
+                onChange={(channelId, channelName) => setFormData({ ...formData, delaySlackChannelId: channelId, delaySlackChannelName: channelName })}
+                label="DELAY MESSAGE SLACK CHANNEL (PREFERRED)"
+                placeholder="Select channel for delay messages..."
+              />
+              <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
+                If set, delay messages will be sent via Slack API. Otherwise, use webhooks below.
+              </small>
+            </div>
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-                DELAY NOTIFICATION WEBHOOKS (SELECT MULTIPLE - SEPARATE FROM REMINDER WEBHOOK)
+                DELAY NOTIFICATION WEBHOOKS (LEGACY - SELECT MULTIPLE)
               </label>
               <small style={{ color: '#000000', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
                 These webhooks will ONLY receive delay messages when the due date is updated. They are completely separate from the reminder webhook above.
@@ -593,8 +643,20 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                   />
                 </div>
                 <div>
+                  <ChannelSelector
+                    value={automatedMessageForm.slack_channel_id}
+                    valueName={automatedMessageForm.slack_channel_name}
+                    onChange={(channelId, channelName) => setAutomatedMessageForm({ ...automatedMessageForm, slack_channel_id: channelId, slack_channel_name: channelName })}
+                    label="SLACK CHANNEL (PREFERRED)"
+                    placeholder="Select channel for this message..."
+                  />
+                  <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+                    If set, this message will be sent via Slack API. Otherwise, use webhook below.
+                  </small>
+                </div>
+                <div>
                   <label htmlFor="auto_webhook" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-                    WEBHOOK *
+                    WEBHOOK (LEGACY/FALLBACK)
                   </label>
                   {savedWebhooks.length > 0 && (
                     <select
@@ -655,11 +717,13 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                             title: automatedMessageForm.title,
                             description: automatedMessageForm.description,
                             webhook_url: automatedMessageForm.webhook_url,
+                            slack_channel_id: automatedMessageForm.slack_channel_id,
+                            slack_channel_name: automatedMessageForm.slack_channel_name,
                             sent: false,
                             sent_at: null,
                           };
                           setFormData({ ...formData, automatedMessages: updated });
-                          setAutomatedMessageForm({ days_before: '', title: '', description: '', webhook_url: '' });
+                          setAutomatedMessageForm({ days_before: '', title: '', description: '', webhook_url: '', slack_channel_id: null, slack_channel_name: null });
                           setEditingAutomatedMessageIndex(null);
                         }}
                         style={{
@@ -682,7 +746,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                       <button
                         type="button"
                         onClick={() => {
-                          setAutomatedMessageForm({ days_before: '', title: '', description: '', webhook_url: '' });
+                          setAutomatedMessageForm({ days_before: '', title: '', description: '', webhook_url: '', slack_channel_id: null, slack_channel_name: null });
                           setEditingAutomatedMessageIndex(null);
                         }}
                         style={{
@@ -707,8 +771,12 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                     <button
                       type="button"
                       onClick={() => {
-                        if (!automatedMessageForm.days_before || !automatedMessageForm.title || !automatedMessageForm.description || !automatedMessageForm.webhook_url) {
-                          setError('All automated message fields are required');
+                        if (!automatedMessageForm.days_before || !automatedMessageForm.title || !automatedMessageForm.description) {
+                          setError('Days before, title, and description are required');
+                          return;
+                        }
+                        if (!automatedMessageForm.slack_channel_id && !automatedMessageForm.webhook_url) {
+                          setError('Please select a Slack channel or enter a webhook URL');
                           return;
                         }
                         const daysBefore = parseInt(automatedMessageForm.days_before);
@@ -722,11 +790,13 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                           title: automatedMessageForm.title,
                           description: automatedMessageForm.description,
                           webhook_url: automatedMessageForm.webhook_url,
+                          slack_channel_id: automatedMessageForm.slack_channel_id,
+                          slack_channel_name: automatedMessageForm.slack_channel_name,
                           sent: false,
                           sent_at: null,
                         };
                         setFormData({ ...formData, automatedMessages: [...formData.automatedMessages, newMessage] });
-                        setAutomatedMessageForm({ days_before: '', title: '', description: '', webhook_url: '' });
+                        setAutomatedMessageForm({ days_before: '', title: '', description: '', webhook_url: '', slack_channel_id: null, slack_channel_name: null });
                         setError('');
                       }}
                       style={{
@@ -783,7 +853,8 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                           </div>
                           <div style={{ fontSize: '0.75rem', color: '#000000', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontWeight: '600' }}>
                             <span>📅 {msg.days_before} day{msg.days_before !== 1 ? 's' : ''} before</span>
-                            <span>🔗 {webhookName}</span>
+                            {msg.slack_channel_name && <span>📢 #{msg.slack_channel_name}</span>}
+                            {msg.webhook_url && <span>🔗 {webhookName}</span>}
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -795,6 +866,8 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                                 title: msg.title,
                                 description: msg.description,
                                 webhook_url: msg.webhook_url,
+                                slack_channel_id: msg.slack_channel_id,
+                                slack_channel_name: msg.slack_channel_name,
                               });
                               setEditingAutomatedMessageIndex(index);
                             }}
@@ -934,8 +1007,21 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
+              <ChannelSelector
+                value={formData.completionSlackChannelId}
+                valueName={formData.completionSlackChannelName}
+                onChange={(channelId, channelName) => setFormData({ ...formData, completionSlackChannelId: channelId, completionSlackChannelName: channelName })}
+                label="COMPLETION MESSAGE SLACK CHANNEL (PREFERRED)"
+                placeholder="Select channel for completion message..."
+              />
+              <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
+                If set, completion message will be sent via Slack API. Otherwise, use webhook below.
+              </small>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
               <label htmlFor="completionWebhook" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-                COMPLETION WEBHOOK URL
+                COMPLETION WEBHOOK URL (LEGACY/FALLBACK)
               </label>
               <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
                 <input
@@ -983,7 +1069,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
             </div>
 
             <p style={{ fontSize: '0.75rem', fontWeight: '700', marginTop: '1rem', color: '#666666' }}>
-              This webhook will ONLY receive completion messages when the reminder is marked as complete. It is completely separate from the reminder webhook and delay webhooks.
+              This will ONLY be sent when the reminder is marked as complete. It is completely separate from the reminder and delay messages.
             </p>
           </div>
         )}

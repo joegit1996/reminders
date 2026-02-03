@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
+import ChannelSelector from './ChannelSelector';
 
 interface Reminder {
   id: number;
@@ -13,6 +14,8 @@ interface Reminder {
   slack_webhook: string;
   delay_message: string | null;
   delay_webhooks: string[];
+  delay_slack_channel_id: string | null;
+  delay_slack_channel_name: string | null;
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
@@ -34,6 +37,8 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [delayMessage, setDelayMessage] = useState(reminder.delay_message || '');
   const [delayWebhooks, setDelayWebhooks] = useState<string[]>(reminder.delay_webhooks || []);
+  const [delaySlackChannelId, setDelaySlackChannelId] = useState<string | null>(reminder.delay_slack_channel_id || null);
+  const [delaySlackChannelName, setDelaySlackChannelName] = useState<string | null>(reminder.delay_slack_channel_name || null);
   const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -76,6 +81,8 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
           action: 'update-delay-config',
           delayMessage: delayMessage || null,
           delayWebhooks: delayWebhooks,
+          delaySlackChannelId: delaySlackChannelId,
+          delaySlackChannelName: delaySlackChannelName,
         }),
       });
 
@@ -161,8 +168,24 @@ export default function EditDelayMessageModal({ reminder, onClose, onUpdated }: 
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
+            <ChannelSelector
+              value={delaySlackChannelId}
+              valueName={delaySlackChannelName}
+              onChange={(channelId, channelName) => {
+                setDelaySlackChannelId(channelId);
+                setDelaySlackChannelName(channelName);
+              }}
+              label="DELAY MESSAGE SLACK CHANNEL (PREFERRED)"
+              placeholder="Select channel for delay messages..."
+            />
+            <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.25rem', marginBottom: '1rem' }}>
+              If set, delay messages will be sent via Slack API. Otherwise, use webhooks below.
+            </small>
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-              DELAY NOTIFICATION WEBHOOKS (SELECT MULTIPLE)
+              DELAY NOTIFICATION WEBHOOKS (LEGACY - SELECT MULTIPLE)
             </label>
             <small style={{ color: '#000000', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
               These webhooks will ONLY receive delay messages when the due date is updated. They are completely separate from the reminder webhook.

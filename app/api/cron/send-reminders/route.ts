@@ -10,7 +10,7 @@ import {
   Reminder,
 } from '@/lib/db';
 import { sendSlackReminder, sendAutomatedMessage } from '@/lib/slack';
-import { sendInteractiveReminder } from '@/lib/slack-interactive';
+import { sendInteractiveReminder, sendSlackApiMessage } from '@/lib/slack-interactive';
 import { format } from 'date-fns';
 
 export async function GET(request: NextRequest) {
@@ -140,29 +140,58 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Send automated messages (still using webhooks as they have their own webhook URLs)
+    // Send automated messages - prefer Slack API with channel, fallback to webhooks
     const automatedMessages = await getAutomatedMessagesToSend(supabase);
     for (const { reminder, automatedMessage } of automatedMessages) {
       try {
-        const success = await sendAutomatedMessage(
-          automatedMessage.title,
-          automatedMessage.description,
-          automatedMessage.webhook_url
-        );
+        let success = false;
+        let method = 'unknown';
+        
+        // Check if automated message has a Slack channel configured
+        if (automatedMessage.slack_channel_id) {
+          // Get user's Slack connection for the access token
+          const connection = connectionsByUserId.get(reminder.user_id);
+          if (connection?.access_token) {
+            const result = await sendSlackApiMessage(
+              connection.access_token,
+              automatedMessage.slack_channel_id,
+              automatedMessage.title,
+              automatedMessage.description
+            );
+            success = result.ok;
+            method = 'slack_api';
+            if (!success) {
+              console.warn(`[CRON] Slack API failed for automated message, trying webhook fallback:`, result.error);
+            }
+          }
+        }
+        
+        // Fallback to webhook if Slack API didn't work or wasn't configured
+        if (!success && automatedMessage.webhook_url) {
+          success = await sendAutomatedMessage(
+            automatedMessage.title,
+            automatedMessage.description,
+            automatedMessage.webhook_url
+          );
+          method = 'webhook';
+        }
+        
         if (success) {
           await markAutomatedMessageSent(supabase, reminder.id, automatedMessage.id);
           results.push({ 
             id: reminder.id, 
             type: 'automated_message', 
             messageId: automatedMessage.id,
-            status: 'sent' 
+            status: 'sent',
+            method,
           });
         } else {
           results.push({ 
             id: reminder.id, 
             type: 'automated_message', 
             messageId: automatedMessage.id,
-            status: 'failed' 
+            status: 'failed',
+            method,
           });
         }
       } catch (error) {

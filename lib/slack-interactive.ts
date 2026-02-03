@@ -168,6 +168,165 @@ export async function updateMessageToCompleted(
   }
 }
 
+// Send a simple automated message via Slack API
+export async function sendSlackApiMessage(
+  accessToken: string,
+  channelId: string,
+  title: string,
+  description: string
+): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  const blocks: SlackBlock[] = [
+    {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: `📢 ${title}`,
+        emoji: true,
+      },
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: description,
+      },
+    },
+  ];
+
+  try {
+    const response = await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        channel: channelId,
+        blocks,
+        text: `${title}: ${description}`,
+      }),
+    });
+
+    const result = await response.json();
+    
+    if (!result.ok) {
+      console.error('[SLACK API MESSAGE] Error sending message:', result.error);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[SLACK API MESSAGE] Error sending message:', error);
+    return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Send a delay notification via Slack API
+export async function sendDelayNotificationViaApi(
+  accessToken: string,
+  channelId: string,
+  message: string,
+  newDueDate: string
+): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  const blocks: SlackBlock[] = [
+    {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: '⏰ Due Date Updated',
+        emoji: true,
+      },
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `${message}\n\n*New due date:* ${newDueDate}`,
+      },
+    },
+  ];
+
+  try {
+    const response = await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        channel: channelId,
+        blocks,
+        text: `${message} - New due date: ${newDueDate}`,
+      }),
+    });
+
+    const result = await response.json();
+    
+    if (!result.ok) {
+      console.error('[SLACK DELAY NOTIFICATION] Error sending message:', result.error);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[SLACK DELAY NOTIFICATION] Error sending message:', error);
+    return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Send a completion notification via Slack API
+export async function sendCompletionNotificationViaApi(
+  accessToken: string,
+  channelId: string,
+  reminderText: string,
+  completionMessage: { title: string; description: string } | string
+): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  const title = typeof completionMessage === 'string' ? completionMessage : completionMessage.title;
+  const description = typeof completionMessage === 'string' ? '' : completionMessage.description;
+
+  const blocks: SlackBlock[] = [
+    {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: `✅ ${title || 'Reminder Completed'}`,
+        emoji: true,
+      },
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*Reminder:* ${reminderText}${description ? `\n\n${description}` : ''}`,
+      },
+    },
+  ];
+
+  try {
+    const response = await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        channel: channelId,
+        blocks,
+        text: `✅ ${title || 'Reminder Completed'}: ${reminderText}`,
+      }),
+    });
+
+    const result = await response.json();
+    
+    if (!result.ok) {
+      console.error('[SLACK COMPLETION NOTIFICATION] Error sending message:', result.error);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[SLACK COMPLETION NOTIFICATION] Error sending message:', error);
+    return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 // Verify Slack request signature for security
 export function verifySlackRequest(
   signingSecret: string,

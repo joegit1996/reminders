@@ -6,6 +6,8 @@ export interface AutomatedMessage {
   title: string;
   description: string;
   webhook_url: string;
+  slack_channel_id: string | null;
+  slack_channel_name: string | null;
   sent: boolean;
   sent_at: string | null;
 }
@@ -19,11 +21,16 @@ export interface Reminder {
   period_days: number;
   slack_webhook: string;
   slack_channel_id: string | null;
+  slack_channel_name: string | null;
   delay_message: string | null;
   delay_webhooks: string[];
+  delay_slack_channel_id: string | null;
+  delay_slack_channel_name: string | null;
   automated_messages: AutomatedMessage[];
   completion_message: { title: string; description: string } | string | null;
   completion_webhook: string | null;
+  completion_slack_channel_id: string | null;
+  completion_slack_channel_name: string | null;
   is_complete: boolean;
   completed_at: string | null;
   days_remaining_at_completion: number | null;
@@ -121,7 +128,12 @@ export async function createReminder(
   automatedMessages?: AutomatedMessage[],
   completionMessage?: { title: string; description: string } | string | null,
   completionWebhook?: string | null,
-  slackChannelId?: string | null
+  slackChannelId?: string | null,
+  slackChannelName?: string | null,
+  delaySlackChannelId?: string | null,
+  delaySlackChannelName?: string | null,
+  completionSlackChannelId?: string | null,
+  completionSlackChannelName?: string | null
 ): Promise<Reminder> {
   const { data, error } = await supabase
     .from('reminders')
@@ -133,11 +145,16 @@ export async function createReminder(
       period_days: periodDays,
       slack_webhook: slackWebhook,
       slack_channel_id: slackChannelId || null,
+      slack_channel_name: slackChannelName || null,
       delay_message: delayMessage || null,
       delay_webhooks: delayWebhooks || [],
+      delay_slack_channel_id: delaySlackChannelId || null,
+      delay_slack_channel_name: delaySlackChannelName || null,
       automated_messages: automatedMessages || [],
       completion_message: completionMessage || null,
       completion_webhook: completionWebhook || null,
+      completion_slack_channel_id: completionSlackChannelId || null,
+      completion_slack_channel_name: completionSlackChannelName || null,
       is_complete: false,
     })
     .select()
@@ -186,7 +203,29 @@ export async function updateReminderDueDate(
 
   // Send delay message if configured
   let delayMessageSent = false;
-  if (updatedReminder.delay_message && updatedReminder.delay_webhooks && updatedReminder.delay_webhooks.length > 0) {
+  
+  // First, try to send via Slack API if channel is configured
+  if (updatedReminder.delay_message && updatedReminder.delay_slack_channel_id) {
+    try {
+      // Get user's Slack connection for the access token
+      const connection = await getSlackConnectionByUserId(supabase, updatedReminder.user_id);
+      if (connection?.access_token) {
+        const { sendDelayNotificationViaApi } = await import('./slack-interactive');
+        const result = await sendDelayNotificationViaApi(
+          connection.access_token,
+          updatedReminder.delay_slack_channel_id,
+          updatedReminder.delay_message,
+          newDueDate
+        );
+        delayMessageSent = result.ok;
+      }
+    } catch (error) {
+      console.error('Error sending delay message via Slack API:', error);
+    }
+  }
+  
+  // Fallback to webhooks if Slack API didn't work or wasn't configured
+  if (!delayMessageSent && updatedReminder.delay_message && updatedReminder.delay_webhooks && updatedReminder.delay_webhooks.length > 0) {
     const { sendDelayMessage } = await import('./slack');
     const results = await sendDelayMessage(
       updatedReminder.delay_message,
@@ -246,7 +285,30 @@ export async function markReminderComplete(supabase: SupabaseClient, id: number)
   if (error) throw error;
 
   // Send completion message if configured
-  if (reminder.completion_message && reminder.completion_webhook) {
+  let completionSent = false;
+  
+  // First, try to send via Slack API if channel is configured
+  if (reminder.completion_message && reminder.completion_slack_channel_id) {
+    try {
+      // Get user's Slack connection for the access token
+      const connection = await getSlackConnectionByUserId(supabase, reminder.user_id);
+      if (connection?.access_token) {
+        const { sendCompletionNotificationViaApi } = await import('./slack-interactive');
+        const result = await sendCompletionNotificationViaApi(
+          connection.access_token,
+          reminder.completion_slack_channel_id,
+          reminder.text,
+          reminder.completion_message
+        );
+        completionSent = result.ok;
+      }
+    } catch (error) {
+      console.error('Error sending completion message via Slack API:', error);
+    }
+  }
+  
+  // Fallback to webhook if Slack API didn't work or wasn't configured
+  if (!completionSent && reminder.completion_message && reminder.completion_webhook) {
     try {
       const { sendCompletionMessage } = await import('./slack');
       const completionMsg = typeof reminder.completion_message === 'string'

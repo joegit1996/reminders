@@ -43,18 +43,31 @@ export async function POST(request: NextRequest) {
       dueDate, 
       periodDays, 
       slackWebhook, 
+      slackChannelId,
+      slackChannelName,
       delayMessage, 
-      delayWebhooks, 
+      delayWebhooks,
+      delaySlackChannelId,
+      delaySlackChannelName,
       automatedMessages, 
       completionMessage, 
       completionWebhook,
-      slackChannelId 
+      completionSlackChannelId,
+      completionSlackChannelName,
     } = body;
 
-    // Validation
-    if (!text || !dueDate || !periodDays || !slackWebhook) {
+    // Validation - either webhook or channel is required
+    if (!text || !dueDate || !periodDays) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields (text, dueDate, periodDays)' },
+        { status: 400 }
+      );
+    }
+
+    // Either slack webhook or channel ID must be provided
+    if (!slackWebhook && !slackChannelId) {
+      return NextResponse.json(
+        { error: 'Either webhook URL or Slack channel must be provided' },
         { status: 400 }
       );
     }
@@ -66,8 +79,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate webhook URL format
-    if (!slackWebhook.startsWith('https://hooks.slack.com/')) {
+    // Validate webhook URL format if provided
+    if (slackWebhook && !slackWebhook.startsWith('https://hooks.slack.com/')) {
       return NextResponse.json(
         { error: 'Invalid Slack webhook URL' },
         { status: 400 }
@@ -89,13 +102,20 @@ export async function POST(request: NextRequest) {
     // Validate automated messages if provided
     if (automatedMessages && Array.isArray(automatedMessages)) {
       for (const msg of automatedMessages) {
-        if (!msg.days_before || !msg.title || !msg.description || !msg.webhook_url) {
+        if (!msg.days_before || !msg.title || !msg.description) {
           return NextResponse.json(
-            { error: 'Automated messages must have days_before, title, description, and webhook_url' },
+            { error: 'Automated messages must have days_before, title, and description' },
             { status: 400 }
           );
         }
-        if (!msg.webhook_url.startsWith('https://hooks.slack.com/')) {
+        // Either webhook_url or slack_channel_id must be provided
+        if (!msg.webhook_url && !msg.slack_channel_id) {
+          return NextResponse.json(
+            { error: 'Automated messages must have either webhook_url or slack_channel_id' },
+            { status: 400 }
+          );
+        }
+        if (msg.webhook_url && !msg.webhook_url.startsWith('https://hooks.slack.com/')) {
           return NextResponse.json(
             { error: 'Invalid automated message webhook URL' },
             { status: 400 }
@@ -124,14 +144,19 @@ export async function POST(request: NextRequest) {
       text,
       dueDate,
       periodDays,
-      slackWebhook,
+      slackWebhook || '',
       description || null,
       delayMessage || null,
       delayWebhooks || [],
       automatedMessages || [],
       completionMessage || null,
       completionWebhook || null,
-      slackChannelId || null
+      slackChannelId || null,
+      slackChannelName || null,
+      delaySlackChannelId || null,
+      delaySlackChannelName || null,
+      completionSlackChannelId || null,
+      completionSlackChannelName || null
     );
     
     // Send immediate reminder
