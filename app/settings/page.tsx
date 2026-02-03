@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { neoStyles, neoColors, buttonVariants } from '@/lib/neoBrutalismStyles';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import SlackConnection from '@/components/SlackConnection';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -159,5 +159,23 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: '100vh',
+        background: neoColors.background,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <p style={{ fontWeight: '700', fontSize: '1.25rem' }}>Loading...</p>
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   );
 }
