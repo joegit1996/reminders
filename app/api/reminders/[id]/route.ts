@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase-server';
 import {
   getReminderById,
   markReminderComplete,
   updateReminderDueDate,
-  initDatabase,
 } from '@/lib/db';
-
-let dbInitialized = false;
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
+    const supabase = await createClient();
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const id = parseInt(params.id);
-    const reminder = await getReminderById(id);
+    const reminder = await getReminderById(supabase, id);
 
     if (!reminder) {
       return NextResponse.json(
@@ -43,17 +43,19 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
+    const supabase = await createClient();
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const id = parseInt(params.id);
     const body = await request.json();
-    const { action, dueDate, delayMessage, delayWebhooks } = body;
+    const { action, dueDate, delayMessage, delayWebhooks, completionMessage, completionWebhook } = body;
 
     if (action === 'complete') {
-      const reminder = await markReminderComplete(id);
+      const reminder = await markReminderComplete(supabase, id);
       return NextResponse.json(reminder);
     }
 
@@ -65,7 +67,7 @@ export async function PATCH(
         );
       }
 
-      const result = await updateReminderDueDate(id, dueDate);
+      const result = await updateReminderDueDate(supabase, id, dueDate);
       return NextResponse.json(result);
     }
 
@@ -82,8 +84,7 @@ export async function PATCH(
         }
       }
 
-      const { getReminderById } = await import('@/lib/db');
-      const reminder = await getReminderById(id);
+      const reminder = await getReminderById(supabase, id);
       if (!reminder) {
         return NextResponse.json(
           { error: 'Reminder not found' },
@@ -91,7 +92,7 @@ export async function PATCH(
         );
       }
 
-      const { data: updatedReminder, error } = await (await import('@/lib/supabase')).supabase
+      const { data: updatedReminder, error } = await supabase
         .from('reminders')
         .update({
           delay_message: delayMessage || null,
@@ -132,8 +133,7 @@ export async function PATCH(
         }
       }
 
-      const { getReminderById } = await import('@/lib/db');
-      const reminder = await getReminderById(id);
+      const reminder = await getReminderById(supabase, id);
       if (!reminder) {
         return NextResponse.json(
           { error: 'Reminder not found' },
@@ -141,10 +141,41 @@ export async function PATCH(
         );
       }
 
-      const { data: updatedReminder, error } = await (await import('@/lib/supabase')).supabase
+      const { data: updatedReminder, error } = await supabase
         .from('reminders')
         .update({
           automated_messages: automatedMessages || [],
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json(updatedReminder);
+    }
+
+    if (action === 'update-completion-config') {
+      // Validate completion webhook if provided
+      if (completionWebhook && !completionWebhook.startsWith('https://hooks.slack.com/')) {
+        return NextResponse.json(
+          { error: 'Invalid completion webhook URL' },
+          { status: 400 }
+        );
+      }
+
+      const reminder = await getReminderById(supabase, id);
+      if (!reminder) {
+        return NextResponse.json(
+          { error: 'Reminder not found' },
+          { status: 404 }
+        );
+      }
+
+      const { data: updatedReminder, error } = await supabase
+        .from('reminders')
+        .update({
+          completion_message: completionMessage || null,
+          completion_webhook: completionWebhook || null,
         })
         .eq('id', id)
         .select()
@@ -172,13 +203,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
+    const supabase = await createClient();
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const id = parseInt(params.id);
-    const reminder = await getReminderById(id);
+    const reminder = await getReminderById(supabase, id);
 
     if (!reminder) {
       return NextResponse.json(
@@ -187,7 +220,6 @@ export async function DELETE(
       );
     }
 
-    const { supabase } = await import('@/lib/supabase');
     const { error } = await supabase
       .from('reminders')
       .delete()

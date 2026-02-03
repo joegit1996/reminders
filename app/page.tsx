@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import Link from 'next/link';
 import ReminderForm from '@/components/ReminderForm';
+import SlackMigrationBanner from '@/components/SlackMigrationBanner';
 import ReminderList from '@/components/ReminderList';
 import UpdateDueDateModal from '@/components/UpdateDueDateModal';
 import EditDelayMessageModal from '@/components/EditDelayMessageModal';
@@ -13,11 +14,13 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export interface Reminder {
   id: number;
+  user_id: string;
   text: string;
   description: string | null;
   due_date: string;
   period_days: number;
   slack_webhook: string;
+  slack_channel_id: string | null;
   delay_message: string | null;
   delay_webhooks: string[];
   automated_messages: Array<{
@@ -32,6 +35,8 @@ export interface Reminder {
   completion_message: string | null;
   completion_webhook: string | null;
   is_complete: boolean;
+  completed_at: string | null;
+  days_remaining_at_completion: number | null;
   last_sent: string | null;
   created_at: string;
 }
@@ -135,6 +140,8 @@ export default function Home() {
       margin: '0 auto',
       width: '100%',
     }}>
+      <SlackMigrationBanner />
+      
       <div style={{
         background: '#FFFFFF',
         borderRadius: '0',
@@ -247,6 +254,33 @@ export default function Home() {
             }}
           >
             🔗 WEBHOOKS
+          </Link>
+          <Link
+            href="/settings"
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#FFD93D',
+              color: '#000000',
+              textDecoration: 'none',
+              borderRadius: '0',
+              border: '3px solid #000000',
+              fontWeight: '700',
+              fontSize: '0.9rem',
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              boxShadow: '4px 4px 0px 0px #000000',
+              transition: 'all 0.1s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translate(2px, 2px)';
+              e.currentTarget.style.boxShadow = '2px 2px 0px 0px #000000';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translate(0, 0)';
+              e.currentTarget.style.boxShadow = '4px 4px 0px 0px #000000';
+            }}
+          >
+            ⚙️ SETTINGS
           </Link>
           </div>
         </div>

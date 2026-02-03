@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { getAllReminders, getReminderById, createReminder, markReminderComplete, updateReminderDueDate, getAllSavedWebhooks } from '@/lib/db';
+import { createClient } from '@/lib/supabase-server';
+import { 
+  getAllReminders, 
+  getReminderById, 
+  createReminder, 
+  markReminderComplete, 
+  updateReminderDueDate, 
+  getAllSavedWebhooks,
+  updateLastSent,
+} from '@/lib/db';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Initialize OpenRouter (OpenAI-compatible API)
 const openai = new OpenAI({
@@ -228,12 +238,19 @@ const functionDefinitions = [
 ];
 
 // Function implementations
-async function executeFunction(name: string, args: any, req: NextRequest) {
+async function executeFunction(
+  supabase: SupabaseClient,
+  userId: string,
+  name: string,
+  args: any
+) {
   console.log('Executing function:', name, 'with args:', args);
   
   switch (name) {
     case 'create_reminder':
       const reminder = await createReminder(
+        supabase,
+        userId,
         args.text,
         args.dueDate,
         args.periodDays,
@@ -248,12 +265,11 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
       // Send immediate reminder
       const { sendSlackReminder } = await import('@/lib/slack');
       await sendSlackReminder(reminder);
-      const { updateLastSent } = await import('@/lib/db');
-      await updateLastSent(reminder.id);
+      await updateLastSent(supabase, reminder.id);
       return { success: true, reminder };
     
     case 'list_reminders':
-      const allReminders = await getAllReminders();
+      const allReminders = await getAllReminders(supabase);
       if (args.filter === 'active') {
         return { reminders: allReminders.filter(r => !r.is_complete) };
       } else if (args.filter === 'completed') {
@@ -262,23 +278,22 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
       return { reminders: allReminders };
     
     case 'get_reminder':
-      const reminderById = await getReminderById(args.id);
+      const reminderById = await getReminderById(supabase, args.id);
       if (!reminderById) {
         return { error: 'Reminder not found' };
       }
       return { reminder: reminderById };
     
     case 'update_reminder_due_date':
-      const result = await updateReminderDueDate(args.id, args.dueDate);
+      const result = await updateReminderDueDate(supabase, args.id, args.dueDate);
       return { success: true, reminder: result.reminder };
     
     case 'complete_reminder':
-      const completed = await markReminderComplete(args.id);
+      const completed = await markReminderComplete(supabase, args.id);
       return { success: true, reminder: completed };
     
     case 'list_webhooks':
-      const webhooks = await getAllSavedWebhooks();
-      // Ensure all webhook data is serializable (convert Date objects to strings)
+      const webhooks = await getAllSavedWebhooks(supabase);
       const serializableWebhooks = webhooks.map((w: any) => ({
         id: w.id,
         name: w.name,
@@ -291,7 +306,7 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
       };
     
     case 'search_reminders':
-      const allRemindersForSearch = await getAllReminders();
+      const allRemindersForSearch = await getAllReminders(supabase);
       let filtered = allRemindersForSearch;
       
       if (args.query) {
@@ -302,8 +317,8 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
       }
       
       if (args.webhookName) {
-        const webhooks = await getAllSavedWebhooks();
-        const webhook = webhooks.find((w: any) => w.name.toLowerCase().includes(args.webhookName.toLowerCase()));
+        const webhooksForSearch = await getAllSavedWebhooks(supabase);
+        const webhook = webhooksForSearch.find((w: any) => w.name.toLowerCase().includes(args.webhookName.toLowerCase()));
         if (webhook) {
           filtered = filtered.filter(r => r.slack_webhook === webhook.webhook_url);
         }
@@ -312,12 +327,10 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
       return { reminders: filtered };
     
     case 'delete_reminder':
-      // Delete reminder directly from database
-      const reminderToDelete = await getReminderById(args.id);
+      const reminderToDelete = await getReminderById(supabase, args.id);
       if (!reminderToDelete) {
         return { error: 'Reminder not found' };
       }
-      const { supabase } = await import('@/lib/supabase');
       const { error: deleteError } = await supabase
         .from('reminders')
         .delete()
@@ -328,13 +341,11 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
       return { success: true, message: 'Reminder deleted successfully' };
     
     case 'update_delay_config':
-      // Update delay config directly
-      const reminderForDelay = await getReminderById(args.id);
+      const reminderForDelay = await getReminderById(supabase, args.id);
       if (!reminderForDelay) {
         return { error: 'Reminder not found' };
       }
-      const { supabase: supabaseDelay } = await import('@/lib/supabase');
-      const { data: updatedDelay, error: delayError } = await supabaseDelay
+      const { data: updatedDelay, error: delayError } = await supabase
         .from('reminders')
         .update({
           delay_message: args.delayMessage || null,
@@ -349,7 +360,6 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
       return { success: true, reminder: updatedDelay };
     
     case 'update_automated_messages':
-      // Process automated messages - generate IDs if not provided
       const processedMessages = args.automatedMessages.map((msg: any) => ({
         id: msg.id || `auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         days_before: msg.days_before,
@@ -360,13 +370,11 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
         sent_at: msg.sent_at || null,
       }));
       
-      // Update automated messages directly
-      const reminderForAuto = await getReminderById(args.id);
+      const reminderForAuto = await getReminderById(supabase, args.id);
       if (!reminderForAuto) {
         return { error: 'Reminder not found' };
       }
-      const { supabase: supabaseAuto } = await import('@/lib/supabase');
-      const { data: updatedAuto, error: autoError } = await supabaseAuto
+      const { data: updatedAuto, error: autoError } = await supabase
         .from('reminders')
         .update({
           automated_messages: processedMessages,
@@ -386,6 +394,13 @@ async function executeFunction(name: string, args: any, req: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!process.env.OPENROUTER_API_KEY) {
       return NextResponse.json(
         { error: 'OPENROUTER_API_KEY not configured' },
@@ -407,14 +422,12 @@ export async function POST(request: NextRequest) {
     ): Promise<any> {
       let lastError: any = null;
       
-      // Try primary model first
       try {
         console.log(`[AGENT] Trying ${errorContext} with primary model: ${primaryModel}`);
         return await createCall(primaryModel);
       } catch (primaryError: any) {
         lastError = primaryError;
         
-        // Check error code in multiple possible locations (OpenRouter nests errors)
         const errorCode = primaryError?.error?.code || primaryError?.code || primaryError?.status;
         const errorMessage = primaryError?.error?.message || primaryError?.message || '';
         
@@ -438,7 +451,6 @@ export async function POST(request: NextRequest) {
             throw fallbackError;
           }
         } else {
-          // Non-retryable error, throw immediately
           console.log(`[AGENT] Non-retryable error (${errorCode}), not trying fallback`);
           throw primaryError;
         }
@@ -455,8 +467,7 @@ export async function POST(request: NextRequest) {
           const functionName = toolCall.function.name;
           const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
           
-                // Execute the function
-                const functionResult = await executeFunction(functionName, functionArgs, request);
+          const functionResult = await executeFunction(supabase, user.id, functionName, functionArgs);
           functionResults.push({
             role: 'tool' as const,
             tool_call_id: toolCall.id,
@@ -470,7 +481,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Build conversation history for final response
       const filteredHistory = conversationHistory.filter((msg: any, index: number) => {
         if (index === 0 && msg.role === 'assistant') {
           return false;
@@ -483,7 +493,6 @@ export async function POST(request: NextRequest) {
         content: msg.content,
       }));
 
-      // Add function results to messages and get final response
       const finalMessages = [
         ...historyMessages,
         storedResponseMessage,
@@ -522,22 +531,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build messages array (OpenAI format)
-    // Filter out the initial welcome message and ensure first message is from user
     const filteredHistory = conversationHistory.filter((msg: any, index: number) => {
-      // Skip the first message if it's from assistant (welcome message)
       if (index === 0 && msg.role === 'assistant') {
         return false;
       }
       return true;
     });
 
-    // Limit conversation history to last 10 messages to avoid token limits and JSON issues
     const limitedHistory = filteredHistory.slice(-10);
 
-    // Convert to OpenAI message format and validate
     const messages = limitedHistory.map((msg: any) => {
-      // Ensure content is a string
       const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
       return {
         role: msg.role === 'user' ? 'user' : 'assistant',
@@ -545,13 +548,11 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    // Add current user message
     messages.push({
       role: 'user',
       content: message,
     });
 
-    // System message to guide the AI
     const systemMessage = {
       role: 'system' as const,
       content: `You are a helpful AI assistant for managing reminders.
@@ -602,69 +603,10 @@ User: "create reminder for youssef about X"
 
       const responseMessage = completion.choices[0].message;
 
-      // If this is an approval request, execute the stored response message's tool calls
-      if (approveActions && storedResponseMessage && storedResponseMessage.tool_calls) {
-        const functionResults = [];
-        const functionCallsData: Array<{ name: string; args: any }> = [];
-        
-        for (const toolCall of storedResponseMessage.tool_calls) {
-          if (toolCall.type === 'function') {
-            const functionName = toolCall.function.name;
-            const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
-            
-                // Execute the function
-                const functionResult = await executeFunction(functionName, functionArgs, request);
-            functionResults.push({
-              role: 'tool' as const,
-              tool_call_id: toolCall.id,
-              content: JSON.stringify(functionResult),
-            });
-            
-            functionCallsData.push({
-              name: functionName,
-              args: functionArgs,
-            });
-          }
-        }
-
-        // Add function results to messages and get final response
-        const finalMessages = [
-          ...messages,
-          storedResponseMessage,
-          ...functionResults,
-        ];
-
-        const finalCompletion = await callWithFallback(
-          (model) => openai.chat.completions.create({
-            model: model,
-            messages: finalMessages as any,
-            stream: false,
-          }),
-          'approval flow duplicate completion'
-        );
-
-        if (!finalCompletion.choices || finalCompletion.choices.length === 0) {
-          console.error('[AGENT] No choices in finalCompletion (approval duplicate):', finalCompletion);
-          return NextResponse.json({
-            response: 'Sorry, I encountered an error processing your approval. Please try again.',
-            functionCalls: functionCallsData,
-            approved: true,
-          });
-        }
-
-        return NextResponse.json({
-          response: finalCompletion.choices[0].message.content || '',
-          functionCalls: functionCallsData,
-          approved: true,
-        });
-      }
-
       // Check if the model wants to call a function
       if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-        // Define read-only operations that don't require approval
         const readOnlyOperations = ['list_reminders', 'get_reminder', 'search_reminders', 'list_webhooks'];
         
-        // Separate read and write operations
         const allToolCalls = responseMessage.tool_calls.filter((tc: any) => tc.type === 'function');
         console.log('[AGENT] Total tool calls:', allToolCalls.length);
         
@@ -699,12 +641,12 @@ User: "create reminder for youssef about X"
               name: funcName,
               args: JSON.parse((tc.type === 'function' ? tc.function?.arguments : '{}') || '{}'),
               description: funcDef?.description || '',
-              parameters: funcDef?.parameters || {}, // Include parameter schema for form generation
-              toolCall: tc, // Store full tool call for execution
+              parameters: funcDef?.parameters || {},
+              toolCall: tc,
             };
           });
 
-          // Execute read operations immediately (no approval needed)
+          // Execute read operations immediately
           const readResults = [];
           for (const toolCall of readOperations) {
             if (toolCall.type === 'function') {
@@ -712,9 +654,8 @@ User: "create reminder for youssef about X"
               const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
               
               try {
-                const functionResult = await executeFunction(functionName, functionArgs, request);
+                const functionResult = await executeFunction(supabase, user.id, functionName, functionArgs);
                 
-                // Safely serialize the result
                 let serializedResult: string;
                 try {
                   serializedResult = JSON.stringify(functionResult);
@@ -742,13 +683,12 @@ User: "create reminder for youssef about X"
             }
           }
 
-          // Store the response message for later execution
           return NextResponse.json({
             response: responseMessage.content || 'I need your approval to proceed with the following actions:',
             pendingActions: pendingActions,
             requiresApproval: true,
-            responseMessage: responseMessage, // Store full response for execution
-            readResults: readResults, // Include results of immediate read operations
+            responseMessage: responseMessage,
+            readResults: readResults,
           });
         }
 
@@ -762,16 +702,13 @@ User: "create reminder for youssef about X"
             const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
             
             try {
-              // Execute the function
-              const functionResult = await executeFunction(functionName, functionArgs, request);
+              const functionResult = await executeFunction(supabase, user.id, functionName, functionArgs);
               
-              // Safely serialize the result
               let serializedResult: string;
               try {
                 serializedResult = JSON.stringify(functionResult);
               } catch (serializeError) {
                 console.error('[AGENT] Error serializing function result:', serializeError, functionResult);
-                // Fallback: create a safe serializable version
                 serializedResult = JSON.stringify({
                   error: 'Failed to serialize result',
                   message: functionResult?.message || 'Function executed but result could not be serialized',
@@ -799,9 +736,7 @@ User: "create reminder for youssef about X"
           }
         }
 
-        // Validate and sanitize function results before adding to messages
         const sanitizedFunctionResults = functionResults.map((fr: any) => {
-          // Ensure content is a valid JSON string
           let content = fr.content;
           if (typeof content !== 'string') {
             try {
@@ -811,12 +746,10 @@ User: "create reminder for youssef about X"
               content = JSON.stringify({ error: 'Failed to serialize function result' });
             }
           } else {
-            // Validate that the string is valid JSON
             try {
               JSON.parse(content);
             } catch (e) {
               console.error('[AGENT] Function result content is not valid JSON:', content.substring(0, 200));
-              // Try to fix it by wrapping in an object
               content = JSON.stringify({ raw: content });
             }
           }
@@ -827,7 +760,6 @@ User: "create reminder for youssef about X"
           };
         });
 
-        // Validate responseMessage content
         let responseMessageContent = responseMessage.content;
         if (responseMessageContent && typeof responseMessageContent !== 'string') {
           try {
@@ -838,27 +770,20 @@ User: "create reminder for youssef about X"
           }
         }
 
-        // Create sanitized response message
         const sanitizedResponseMessage = {
           ...responseMessage,
           content: responseMessageContent || '',
         };
 
-        // Add function results to messages and get final response
         const finalMessages = [
           ...messages,
           sanitizedResponseMessage,
           ...sanitizedFunctionResults,
         ];
 
-        // Log the messages being sent for debugging
         console.log('[AGENT] Sending follow-up request with', finalMessages.length, 'messages');
         console.log('[AGENT] Function results count:', sanitizedFunctionResults.length);
-        if (sanitizedFunctionResults.length > 0) {
-          console.log('[AGENT] First function result content preview:', sanitizedFunctionResults[0].content?.substring(0, 200));
-        }
 
-        // Validate final messages array before sending
         try {
           JSON.stringify(finalMessages);
         } catch (e) {
@@ -869,7 +794,6 @@ User: "create reminder for youssef about X"
           });
         }
 
-        // Retry logic for API calls (up to 3 attempts)
         let finalCompletion;
         let lastError: any = null;
         const maxRetries = 3;
@@ -893,23 +817,19 @@ User: "create reminder for youssef about X"
               }),
               `follow-up completion (attempt ${attempt})`
             );
-            // Success, break out of retry loop
             break;
           } catch (apiError: any) {
             lastError = apiError;
             const isRetryable = apiError?.status === 502 || apiError?.status === 503 || apiError?.status === 504;
             
             if (isRetryable && attempt < maxRetries) {
-              const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+              const delay = Math.pow(2, attempt) * 1000;
               console.log(`[AGENT] API call failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`);
               await new Promise(resolve => setTimeout(resolve, delay));
               continue;
             } else {
-              // Not retryable or max retries reached
               console.error('[AGENT] Error in follow-up API call:', apiError);
-              console.error('[AGENT] Error details:', JSON.stringify(apiError, null, 2));
               
-              // If it's a 502/503/504 and we've exhausted retries, return a helpful message
               if (isRetryable) {
                 return NextResponse.json({
                   response: 'The AI service is temporarily unavailable. Please try again in a moment.',
@@ -917,7 +837,6 @@ User: "create reminder for youssef about X"
                 });
               }
               
-              // For other errors, return a generic error message
               return NextResponse.json({
                 response: 'Sorry, I encountered an error processing the webhook information. Please try again.',
                 functionCalls: functionCallsData,
@@ -926,7 +845,6 @@ User: "create reminder for youssef about X"
           }
         }
         
-        // If we exhausted retries and still no success
         if (!finalCompletion) {
           return NextResponse.json({
             response: 'The AI service is temporarily unavailable. Please try again in a moment.',
@@ -946,10 +864,6 @@ User: "create reminder for youssef about X"
 
         // Check if the follow-up response has tool calls (write operations)
         if (finalResponseMessage.tool_calls && finalResponseMessage.tool_calls.length > 0) {
-          // Define read-only operations that don't require approval
-          const readOnlyOperations = ['list_reminders', 'get_reminder', 'search_reminders', 'list_webhooks'];
-          
-          // Separate read and write operations in the follow-up response
           const followUpToolCalls = finalResponseMessage.tool_calls.filter((tc: any) => tc.type === 'function');
           console.log('[AGENT] Follow-up tool calls:', followUpToolCalls.length);
           
@@ -968,7 +882,6 @@ User: "create reminder for youssef about X"
           
           console.log('[AGENT] Follow-up write operations:', followUpWriteOperations.length, 'Read operations:', followUpReadOperations.length);
 
-          // If there are write operations in the follow-up, require approval
           if (followUpWriteOperations.length > 0) {
             console.log('[AGENT] REQUIRING APPROVAL for', followUpWriteOperations.length, 'follow-up write operation(s)');
             
@@ -985,7 +898,6 @@ User: "create reminder for youssef about X"
               };
             });
 
-            // Execute follow-up read operations immediately
             const followUpReadResults = [];
             for (const toolCall of followUpReadOperations) {
               if (toolCall.type === 'function') {
@@ -993,17 +905,14 @@ User: "create reminder for youssef about X"
                 const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
                 
                 try {
-                  const functionResult = await executeFunction(functionName, functionArgs, request);
+                  const functionResult = await executeFunction(supabase, user.id, functionName, functionArgs);
                   
-                  // Safely serialize the result
                   let serializedResult: string;
                   try {
                     serializedResult = JSON.stringify(functionResult);
                   } catch (serializeError) {
-                    console.error('[AGENT] Error serializing follow-up read result:', serializeError, functionResult);
                     serializedResult = JSON.stringify({
                       error: 'Failed to serialize result',
-                      message: functionResult?.message || 'Function executed but result could not be serialized',
                     });
                   }
                   
@@ -1013,7 +922,6 @@ User: "create reminder for youssef about X"
                     content: serializedResult,
                   });
                 } catch (execError) {
-                  console.error('[AGENT] Error executing follow-up read function:', execError);
                   followUpReadResults.push({
                     role: 'tool' as const,
                     tool_call_id: toolCall.id,
@@ -1023,11 +931,8 @@ User: "create reminder for youssef about X"
               }
             }
 
-            // Combine all read results (from first call and follow-up)
             const allReadResults = [...functionResults, ...followUpReadResults];
 
-            // Combine write operations from original response and follow-up
-            // The responseMessage should contain ALL tool_calls (both original and follow-up)
             const combinedToolCalls = [
               ...(responseMessage.tool_calls || []).filter((tc: any) => {
                 const funcName = tc.type === 'function' ? tc.function?.name : null;
@@ -1036,15 +941,11 @@ User: "create reminder for youssef about X"
               ...followUpWriteOperations,
             ];
 
-            // Create a combined response message with all write operations
             const combinedResponseMessage = {
               ...finalResponseMessage,
               tool_calls: combinedToolCalls.length > 0 ? combinedToolCalls : finalResponseMessage.tool_calls,
             };
 
-            console.log('[AGENT] Combined write operations:', combinedToolCalls.length, 'pendingActions:', pendingActions.length);
-
-            // Store the response message for later execution
             return NextResponse.json({
               response: finalResponseMessage.content || 'I need your approval to proceed with the following actions:',
               pendingActions: pendingActions,
@@ -1064,17 +965,14 @@ User: "create reminder for youssef about X"
               const functionArgs = JSON.parse(toolCall.function.arguments || '{}');
               
               try {
-                const functionResult = await executeFunction(functionName, functionArgs, request);
+                const functionResult = await executeFunction(supabase, user.id, functionName, functionArgs);
                 
-                // Safely serialize the result
                 let serializedResult: string;
                 try {
                   serializedResult = JSON.stringify(functionResult);
                 } catch (serializeError) {
-                  console.error('[AGENT] Error serializing follow-up function result:', serializeError, functionResult);
                   serializedResult = JSON.stringify({
                     error: 'Failed to serialize result',
-                    message: functionResult?.message || 'Function executed but result could not be serialized',
                   });
                 }
                 
@@ -1088,7 +986,6 @@ User: "create reminder for youssef about X"
                   args: functionArgs,
                 });
               } catch (execError) {
-                console.error('[AGENT] Error executing follow-up function:', execError);
                 followUpFunctionResults.push({
                   role: 'tool' as const,
                   tool_call_id: toolCall.id,
@@ -1098,7 +995,6 @@ User: "create reminder for youssef about X"
             }
           }
 
-          // Make one more API call with follow-up results to get final text response
           const finalMessagesWithResults = [
             ...finalMessages,
             finalResponseMessage,
@@ -1115,7 +1011,6 @@ User: "create reminder for youssef about X"
           );
 
           if (!finalTextCompletion.choices || finalTextCompletion.choices.length === 0) {
-            console.error('[AGENT] No choices in finalTextCompletion:', finalTextCompletion);
             return NextResponse.json({
               response: 'Sorry, I encountered an error processing your request. Please try again.',
               functionCalls: [...functionCallsData, ...followUpFunctionCallsData],

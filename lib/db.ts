@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface AutomatedMessage {
   id: string; // Unique ID for this automated message
@@ -12,23 +12,28 @@ export interface AutomatedMessage {
 
 export interface Reminder {
   id: number;
+  user_id: string;
   text: string;
   description: string | null;
   due_date: string;
   period_days: number;
   slack_webhook: string;
+  slack_channel_id: string | null;
   delay_message: string | null;
   delay_webhooks: string[];
   automated_messages: AutomatedMessage[];
   completion_message: { title: string; description: string } | string | null;
   completion_webhook: string | null;
   is_complete: boolean;
+  completed_at: string | null;
+  days_remaining_at_completion: number | null;
   last_sent: string | null;
   created_at: string;
 }
 
 export interface SavedWebhook {
   id: number;
+  user_id: string;
   name: string;
   webhook_url: string;
   created_at: string;
@@ -42,17 +47,30 @@ export interface DueDateUpdateLog {
   updated_at: string;
 }
 
+export interface SlackConnection {
+  id: number;
+  user_id: string;
+  team_id: string;
+  team_name: string | null;
+  access_token: string;
+  bot_user_id: string | null;
+  default_channel_id: string | null;
+  default_channel_name: string | null;
+  created_at: string;
+}
+
 // Initialize database tables
-// Note: Tables should be created via Supabase SQL Editor using supabase-setup.sql
-// This function is kept for compatibility but tables must be created manually
+// Note: Tables should be created via Supabase SQL Editor using migrations
 export async function initDatabase() {
-  // Tables are created via Supabase SQL Editor
-  // See supabase-setup.sql for the schema
   console.log('Database tables should be created via Supabase SQL Editor');
 }
 
-// Get all active reminders
-export async function getActiveReminders(): Promise<Reminder[]> {
+// =====================================================
+// REMINDER FUNCTIONS
+// =====================================================
+
+// Get all active reminders for the authenticated user
+export async function getActiveReminders(supabase: SupabaseClient): Promise<Reminder[]> {
   const { data, error } = await supabase
     .from('reminders')
     .select('*')
@@ -63,8 +81,8 @@ export async function getActiveReminders(): Promise<Reminder[]> {
   return data as Reminder[];
 }
 
-// Get all reminders (including completed)
-export async function getAllReminders(): Promise<Reminder[]> {
+// Get all reminders for the authenticated user (including completed)
+export async function getAllReminders(supabase: SupabaseClient): Promise<Reminder[]> {
   const { data, error } = await supabase
     .from('reminders')
     .select('*')
@@ -74,8 +92,8 @@ export async function getAllReminders(): Promise<Reminder[]> {
   return data as Reminder[];
 }
 
-// Get reminder by ID
-export async function getReminderById(id: number): Promise<Reminder | null> {
+// Get reminder by ID (RLS ensures user can only access their own)
+export async function getReminderById(supabase: SupabaseClient, id: number): Promise<Reminder | null> {
   const { data, error } = await supabase
     .from('reminders')
     .select('*')
@@ -91,6 +109,8 @@ export async function getReminderById(id: number): Promise<Reminder | null> {
 
 // Create a new reminder
 export async function createReminder(
+  supabase: SupabaseClient,
+  userId: string,
   text: string,
   dueDate: string,
   periodDays: number,
@@ -100,16 +120,19 @@ export async function createReminder(
   delayWebhooks?: string[],
   automatedMessages?: AutomatedMessage[],
   completionMessage?: { title: string; description: string } | string | null,
-  completionWebhook?: string | null
+  completionWebhook?: string | null,
+  slackChannelId?: string | null
 ): Promise<Reminder> {
   const { data, error } = await supabase
     .from('reminders')
     .insert({
+      user_id: userId,
       text,
       description: description || null,
       due_date: dueDate,
       period_days: periodDays,
       slack_webhook: slackWebhook,
+      slack_channel_id: slackChannelId || null,
       delay_message: delayMessage || null,
       delay_webhooks: delayWebhooks || [],
       automated_messages: automatedMessages || [],
@@ -126,11 +149,12 @@ export async function createReminder(
 
 // Update reminder due date
 export async function updateReminderDueDate(
+  supabase: SupabaseClient,
   id: number,
   newDueDate: string
 ): Promise<{ reminder: Reminder; log: DueDateUpdateLog; delayMessageSent: boolean }> {
   // Get current reminder
-  const reminder = await getReminderById(id);
+  const reminder = await getReminderById(supabase, id);
   if (!reminder) {
     throw new Error('Reminder not found');
   }
@@ -194,16 +218,27 @@ export async function updateReminderDueDate(
 }
 
 // Mark reminder as complete
-export async function markReminderComplete(id: number): Promise<Reminder> {
+export async function markReminderComplete(supabase: SupabaseClient, id: number): Promise<Reminder> {
   // Get the reminder first to check for completion webhook
-  const reminder = await getReminderById(id);
+  const reminder = await getReminderById(supabase, id);
   if (!reminder) {
     throw new Error('Reminder not found');
   }
 
+  // Calculate days remaining at completion time
+  const dueDate = new Date(reminder.due_date);
+  const today = new Date();
+  dueDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  const daysRemaining = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
   const { data, error } = await supabase
     .from('reminders')
-    .update({ is_complete: true })
+    .update({ 
+      is_complete: true,
+      completed_at: new Date().toISOString(),
+      days_remaining_at_completion: daysRemaining
+    })
     .eq('id', id)
     .select()
     .single();
@@ -214,7 +249,6 @@ export async function markReminderComplete(id: number): Promise<Reminder> {
   if (reminder.completion_message && reminder.completion_webhook) {
     try {
       const { sendCompletionMessage } = await import('./slack');
-      // Handle both old string format and new object format
       const completionMsg = typeof reminder.completion_message === 'string'
         ? reminder.completion_message
         : reminder.completion_message;
@@ -224,7 +258,6 @@ export async function markReminderComplete(id: number): Promise<Reminder> {
         reminder.completion_webhook
       );
     } catch (error) {
-      // Log error but don't fail the completion
       console.error('Error sending completion message:', error);
     }
   }
@@ -233,7 +266,7 @@ export async function markReminderComplete(id: number): Promise<Reminder> {
 }
 
 // Update last_sent timestamp
-export async function updateLastSent(id: number): Promise<void> {
+export async function updateLastSent(supabase: SupabaseClient, id: number): Promise<void> {
   const { error } = await supabase
     .from('reminders')
     .update({ last_sent: new Date().toISOString() })
@@ -242,8 +275,8 @@ export async function updateLastSent(id: number): Promise<void> {
   if (error) throw error;
 }
 
-// Get reminders that need to be sent
-export async function getRemindersToSend(): Promise<Reminder[]> {
+// Get reminders that need to be sent (for cron job - uses service client)
+export async function getRemindersToSend(supabase: SupabaseClient): Promise<Reminder[]> {
   const now = new Date();
   const { data, error } = await supabase
     .from('reminders')
@@ -258,8 +291,6 @@ export async function getRemindersToSend(): Promise<Reminder[]> {
 
     const lastSent = new Date(reminder.last_sent);
     
-    // Use calendar days (UTC) instead of 24-hour periods
-    // This ensures a reminder sent yesterday at 11 PM fires today at 10 AM
     const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     const lastSentUTC = Date.UTC(lastSent.getUTCFullYear(), lastSent.getUTCMonth(), lastSent.getUTCDate());
     const calendarDaysSinceLastSent = Math.floor((nowUTC - lastSentUTC) / (1000 * 60 * 60 * 24));
@@ -270,8 +301,8 @@ export async function getRemindersToSend(): Promise<Reminder[]> {
   return remindersToSend;
 }
 
-// Get automated messages that need to be sent
-export async function getAutomatedMessagesToSend(): Promise<Array<{ reminder: Reminder; automatedMessage: AutomatedMessage }>> {
+// Get automated messages that need to be sent (for cron job)
+export async function getAutomatedMessagesToSend(supabase: SupabaseClient): Promise<Array<{ reminder: Reminder; automatedMessage: AutomatedMessage }>> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -292,10 +323,6 @@ export async function getAutomatedMessagesToSend(): Promise<Array<{ reminder: Re
     const daysUntilDue = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     for (const automatedMessage of reminder.automated_messages) {
-      // Only send if:
-      // 1. Not already sent
-      // 2. Days until due equals days_before
-      // 3. At least N days remaining
       if (
         !automatedMessage.sent &&
         daysUntilDue === automatedMessage.days_before &&
@@ -311,10 +338,11 @@ export async function getAutomatedMessagesToSend(): Promise<Array<{ reminder: Re
 
 // Mark automated message as sent
 export async function markAutomatedMessageSent(
+  supabase: SupabaseClient,
   reminderId: number,
   automatedMessageId: string
 ): Promise<void> {
-  const reminder = await getReminderById(reminderId);
+  const reminder = await getReminderById(supabase, reminderId);
   if (!reminder) throw new Error('Reminder not found');
 
   const updatedMessages = reminder.automated_messages.map((msg: AutomatedMessage) => {
@@ -337,7 +365,7 @@ export async function markAutomatedMessageSent(
 }
 
 // Get update logs for a reminder
-export async function getUpdateLogs(reminderId: number): Promise<DueDateUpdateLog[]> {
+export async function getUpdateLogs(supabase: SupabaseClient, reminderId: number): Promise<DueDateUpdateLog[]> {
   const { data, error } = await supabase
     .from('due_date_update_logs')
     .select('*')
@@ -348,8 +376,11 @@ export async function getUpdateLogs(reminderId: number): Promise<DueDateUpdateLo
   return data as DueDateUpdateLog[];
 }
 
-// Saved Webhooks CRUD operations
-export async function getAllSavedWebhooks(): Promise<SavedWebhook[]> {
+// =====================================================
+// SAVED WEBHOOKS FUNCTIONS
+// =====================================================
+
+export async function getAllSavedWebhooks(supabase: SupabaseClient): Promise<SavedWebhook[]> {
   const { data, error } = await supabase
     .from('saved_webhooks')
     .select('*')
@@ -359,10 +390,16 @@ export async function getAllSavedWebhooks(): Promise<SavedWebhook[]> {
   return data as SavedWebhook[];
 }
 
-export async function createSavedWebhook(name: string, webhookUrl: string): Promise<SavedWebhook> {
+export async function createSavedWebhook(
+  supabase: SupabaseClient,
+  userId: string,
+  name: string,
+  webhookUrl: string
+): Promise<SavedWebhook> {
   const { data, error } = await supabase
     .from('saved_webhooks')
     .insert({
+      user_id: userId,
       name,
       webhook_url: webhookUrl,
     })
@@ -373,7 +410,12 @@ export async function createSavedWebhook(name: string, webhookUrl: string): Prom
   return data as SavedWebhook;
 }
 
-export async function updateSavedWebhook(id: number, name: string, webhookUrl: string): Promise<SavedWebhook> {
+export async function updateSavedWebhook(
+  supabase: SupabaseClient,
+  id: number,
+  name: string,
+  webhookUrl: string
+): Promise<SavedWebhook> {
   const { data, error } = await supabase
     .from('saved_webhooks')
     .update({
@@ -388,11 +430,125 @@ export async function updateSavedWebhook(id: number, name: string, webhookUrl: s
   return data as SavedWebhook;
 }
 
-export async function deleteSavedWebhook(id: number): Promise<void> {
+export async function deleteSavedWebhook(supabase: SupabaseClient, id: number): Promise<void> {
   const { error } = await supabase
     .from('saved_webhooks')
     .delete()
     .eq('id', id);
 
   if (error) throw error;
+}
+
+// =====================================================
+// SLACK CONNECTION FUNCTIONS
+// =====================================================
+
+export async function getSlackConnection(supabase: SupabaseClient): Promise<SlackConnection | null> {
+  const { data, error } = await supabase
+    .from('slack_connections')
+    .select('*')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null; // Not found
+    throw error;
+  }
+  return data as SlackConnection;
+}
+
+export async function getSlackConnectionByUserId(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<SlackConnection | null> {
+  const { data, error } = await supabase
+    .from('slack_connections')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data as SlackConnection;
+}
+
+export async function getSlackConnectionByTeamId(
+  supabase: SupabaseClient,
+  teamId: string
+): Promise<SlackConnection | null> {
+  const { data, error } = await supabase
+    .from('slack_connections')
+    .select('*')
+    .eq('team_id', teamId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data as SlackConnection;
+}
+
+export async function upsertSlackConnection(
+  supabase: SupabaseClient,
+  userId: string,
+  teamId: string,
+  teamName: string | null,
+  accessToken: string,
+  botUserId: string | null
+): Promise<SlackConnection> {
+  const { data, error } = await supabase
+    .from('slack_connections')
+    .upsert({
+      user_id: userId,
+      team_id: teamId,
+      team_name: teamName,
+      access_token: accessToken,
+      bot_user_id: botUserId,
+    }, {
+      onConflict: 'user_id',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as SlackConnection;
+}
+
+export async function updateSlackConnectionChannel(
+  supabase: SupabaseClient,
+  channelId: string,
+  channelName: string
+): Promise<SlackConnection> {
+  const { data, error } = await supabase
+    .from('slack_connections')
+    .update({
+      default_channel_id: channelId,
+      default_channel_name: channelName,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as SlackConnection;
+}
+
+export async function deleteSlackConnection(supabase: SupabaseClient): Promise<void> {
+  const { error } = await supabase
+    .from('slack_connections')
+    .delete()
+    .neq('id', 0); // Delete all for current user (RLS filters)
+
+  if (error) throw error;
+}
+
+// Get all users with Slack connections (for cron job - uses service client)
+export async function getAllSlackConnections(supabase: SupabaseClient): Promise<SlackConnection[]> {
+  const { data, error } = await supabase
+    .from('slack_connections')
+    .select('*');
+
+  if (error) throw error;
+  return data as SlackConnection[];
 }

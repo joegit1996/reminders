@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllReminders, getRemindersToSend, initDatabase } from '@/lib/db';
-
-let dbInitialized = false;
+import { createClient } from '@/lib/supabase-server';
+import { getAllReminders, getRemindersToSend } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
+    const supabase = await createClient();
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const allReminders = await getAllReminders();
-    const remindersToSend = await getRemindersToSend();
+    const allReminders = await getAllReminders(supabase);
+    const remindersToSend = await getRemindersToSend(supabase);
     const now = new Date();
 
     const remindersWithStatus = allReminders.map(reminder => {

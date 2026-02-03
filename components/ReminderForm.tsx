@@ -16,10 +16,20 @@ interface ReminderFormProps {
 
 export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
   const [formData, setFormData] = useState({
     text: '',
     description: '',
-    dueDate: '',
+    dueDate: getTodayDate(),
     periodDays: '1',
     slackWebhook: '',
     delayMessage: '',
@@ -33,10 +43,14 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
       sent: boolean;
       sent_at: string | null;
     }>,
+    completionTitle: '',
+    completionDescription: '',
+    completionWebhook: '',
   });
   const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
   const [showDelayConfig, setShowDelayConfig] = useState(false);
   const [showAutomatedMessages, setShowAutomatedMessages] = useState(false);
+  const [showCompletionConfig, setShowCompletionConfig] = useState(false);
   const [showAddWebhook, setShowAddWebhook] = useState(false);
   const [newWebhookName, setNewWebhookName] = useState('');
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
@@ -125,6 +139,11 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
           delayMessage: formData.delayMessage || null,
           delayWebhooks: formData.delayWebhooks.length > 0 ? formData.delayWebhooks : [],
           automatedMessages: formData.automatedMessages,
+          completionMessage: formData.completionTitle || formData.completionDescription ? {
+            title: formData.completionTitle || null,
+            description: formData.completionDescription || null,
+          } : null,
+          completionWebhook: formData.completionWebhook || null,
         }),
       });
 
@@ -137,12 +156,15 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
       setFormData({
         text: '',
         description: '',
-        dueDate: '',
+        dueDate: getTodayDate(),
         periodDays: '1',
         slackWebhook: '',
         delayMessage: '',
         delayWebhooks: [],
         automatedMessages: [],
+        completionTitle: '',
+        completionDescription: '',
+        completionWebhook: '',
       });
       setAutomatedMessageForm({
         days_before: '',
@@ -152,6 +174,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
       });
       setShowAutomatedMessages(false);
       setShowDelayConfig(false);
+      setShowCompletionConfig(false);
 
       onReminderCreated();
     } catch (err) {
@@ -162,7 +185,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       <div>
         <label htmlFor="text" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
           REMINDER TEXT *
@@ -212,7 +235,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
         />
       </div>
 
-      <div>
+      <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <label htmlFor="dueDate" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
           DUE DATE *
         </label>
@@ -225,6 +248,12 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
           style={{
             ...neoStyles.input,
             width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box',
+            WebkitAppearance: 'none',
+            appearance: 'none',
+            WebkitTapHighlightColor: 'transparent',
           }}
           onFocus={(e) => {
             e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
@@ -816,6 +845,146 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowCompletionConfig(!showCompletionConfig)}
+          style={{
+            ...neoStyles.button,
+            ...buttonVariants.info,
+            width: '100%',
+            padding: '0.75rem',
+            fontSize: '0.875rem',
+            background: showCompletionConfig ? '#E5E5E5' : buttonVariants.info.background,
+          }}
+          onMouseEnter={(e) => {
+            Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translate(0, 0)';
+            e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+          }}
+        >
+          {showCompletionConfig ? '▼ HIDE' : '▶ SHOW'} COMPLETION MESSAGE SETTINGS (OPTIONAL)
+        </button>
+
+        {showCompletionConfig && (
+          <div style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            background: neoStyles.card.background,
+            border: '3px solid #000000',
+            borderRadius: neoStyles.card.borderRadius,
+            boxShadow: '4px 4px 0px 0px #000000',
+          }}>
+            <p style={{ fontSize: '0.875rem', fontWeight: '700', marginBottom: '1rem', color: '#000000' }}>
+              Configure a message to be sent when this reminder is marked as complete.
+            </p>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="completionTitle" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+                COMPLETION MESSAGE TITLE
+              </label>
+              <input
+                type="text"
+                id="completionTitle"
+                value={formData.completionTitle}
+                onChange={(e) => setFormData({ ...formData, completionTitle: e.target.value })}
+                placeholder="e.g., Reminder Completed Successfully"
+                style={{
+                  ...neoStyles.input,
+                  width: '100%',
+                }}
+                onFocus={(e) => {
+                  e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                }}
+                onBlur={(e) => {
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="completionDescription" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+                COMPLETION MESSAGE DESCRIPTION
+              </label>
+              <textarea
+                id="completionDescription"
+                value={formData.completionDescription}
+                onChange={(e) => setFormData({ ...formData, completionDescription: e.target.value })}
+                placeholder="e.g., Great job! The reminder has been completed successfully."
+                rows={3}
+                style={{
+                  ...neoStyles.input,
+                  width: '100%',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                }}
+                onFocus={(e) => {
+                  e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                }}
+                onBlur={(e) => {
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="completionWebhook" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+                COMPLETION WEBHOOK URL
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                <input
+                  type="text"
+                  id="completionWebhook"
+                  value={formData.completionWebhook}
+                  onChange={(e) => setFormData({ ...formData, completionWebhook: e.target.value })}
+                  placeholder="https://hooks.slack.com/services/..."
+                  style={{
+                    ...neoStyles.input,
+                    width: '100%',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+                {savedWebhooks.length > 0 && (
+                  <select
+                    value={formData.completionWebhook}
+                    onChange={(e) => setFormData({ ...formData, completionWebhook: e.target.value })}
+                    style={{
+                      ...neoStyles.input,
+                      width: '100%',
+                      cursor: 'pointer',
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  >
+                    <option value="">Select from saved webhooks...</option>
+                    {savedWebhooks.map((webhook) => (
+                      <option key={webhook.id} value={webhook.webhook_url}>
+                        {webhook.name} ({webhook.webhook_url.substring(0, 40)}...)
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.75rem', fontWeight: '700', marginTop: '1rem', color: '#666666' }}>
+              This webhook will ONLY receive completion messages when the reminder is marked as complete. It is completely separate from the reminder webhook and delay webhooks.
+            </p>
           </div>
         )}
       </div>

@@ -1,31 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase-server';
 import { 
   getRemindersToSend, 
   updateLastSent, 
-  initDatabase,
   getAutomatedMessagesToSend,
   markAutomatedMessageSent,
+  getAllSlackConnections,
+  getSlackConnectionByUserId,
+  Reminder,
 } from '@/lib/db';
 import { sendSlackReminder, sendAutomatedMessage } from '@/lib/slack';
-
-let dbInitialized = false;
+import { sendInteractiveReminder } from '@/lib/slack-interactive';
+import { format } from 'date-fns';
 
 export async function GET(request: NextRequest) {
   // Verify cron secret for security
-  // Vercel cron jobs automatically send Authorization: Bearer <CRON_SECRET> if CRON_SECRET is set
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   
-  // Check for Vercel-specific headers that indicate it's a legitimate cron job
   const userAgent = request.headers.get('user-agent') || '';
   const isVercelCron = userAgent.includes('vercel-cron') || 
                        request.headers.get('x-vercel-cron') === '1' ||
                        request.headers.get('x-vercel-signature');
   
-  // Authentication: Accept either valid CRON_SECRET or verified Vercel cron request
   let isAuthenticated = false;
   
-  // Method 1: Check CRON_SECRET if set
   if (cronSecret && authHeader) {
     const expectedHeader = `Bearer ${cronSecret}`;
     const normalizedAuthHeader = authHeader.trim();
@@ -36,25 +35,16 @@ export async function GET(request: NextRequest) {
       console.log('[CRON] Authenticated via CRON_SECRET');
     } else {
       console.warn('[CRON] CRON_SECRET provided but did not match');
-      console.warn('[CRON] Expected length:', normalizedExpected.length, 'Received length:', normalizedAuthHeader.length);
     }
   }
   
-  // Method 2: Trust Vercel's cron infrastructure headers
-  // Vercel signs cron requests and these headers cannot be spoofed by external requests
   if (!isAuthenticated && isVercelCron) {
     isAuthenticated = true;
     console.log('[CRON] Authenticated via Vercel cron headers');
   }
   
-  // Reject if neither authentication method succeeded
   if (!isAuthenticated) {
     console.error('[CRON] Authentication failed.');
-    console.error('[CRON] Auth header present:', !!authHeader);
-    console.error('[CRON] CRON_SECRET configured:', !!cronSecret);
-    console.error('[CRON] Is Vercel cron:', isVercelCron);
-    console.error('[CRON] User-Agent:', userAgent);
-    
     return NextResponse.json(
       { 
         error: 'Unauthorized',
@@ -66,39 +56,92 @@ export async function GET(request: NextRequest) {
   
   const timestamp = new Date().toISOString();
   console.log('[CRON] Cron job triggered at', timestamp);
-  console.log('[CRON] Authentication successful');
   
   try {
-    if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
-    }
+    // Use service client to bypass RLS for cron jobs
+    const supabase = createServiceClient();
 
-    const reminders = await getRemindersToSend();
+    const reminders = await getRemindersToSend(supabase);
     console.log('[CRON] Found', reminders.length, 'reminders to send');
     if (reminders.length > 0) {
       console.log('[CRON] Reminder IDs to send:', reminders.map(r => r.id));
     }
-    const results = [];
+    
+    const results: Array<{
+      id: number;
+      type: string;
+      status: string;
+      method?: string;
+      messageId?: string;
+    }> = [];
+
+    // Get all Slack connections for sending interactive messages
+    const slackConnections = await getAllSlackConnections(supabase);
+    const connectionsByUserId = new Map(
+      slackConnections.map(conn => [conn.user_id, conn])
+    );
 
     // Send regular reminders
     for (const reminder of reminders) {
       try {
-        const success = await sendSlackReminder(reminder);
-        if (success) {
-          await updateLastSent(reminder.id);
-          results.push({ id: reminder.id, type: 'reminder', status: 'sent' });
+        // Check if user has Slack connection with a default channel
+        const connection = connectionsByUserId.get(reminder.user_id);
+        
+        if (connection && connection.default_channel_id && connection.access_token) {
+          // Use interactive message via Slack API
+          const channelId = reminder.slack_channel_id || connection.default_channel_id;
+          
+          // Calculate days remaining
+          const dueDate = new Date(reminder.due_date);
+          const today = new Date();
+          dueDate.setHours(0, 0, 0, 0);
+          today.setHours(0, 0, 0, 0);
+          const daysRemaining = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+          const result = await sendInteractiveReminder({
+            accessToken: connection.access_token,
+            channelId,
+            reminderId: reminder.id,
+            reminderText: reminder.text,
+            reminderDescription: reminder.description,
+            dueDate: format(dueDate, 'MMM dd, yyyy'),
+            daysRemaining,
+            appUrl: process.env.NEXT_PUBLIC_BASE_URL || 'https://reminders.vercel.app',
+          });
+
+          if (result.ok) {
+            await updateLastSent(supabase, reminder.id);
+            results.push({ id: reminder.id, type: 'reminder', status: 'sent', method: 'interactive' });
+            console.log('[CRON] Sent interactive reminder:', reminder.id);
+          } else {
+            // Fallback to webhook if interactive fails
+            console.warn('[CRON] Interactive message failed, falling back to webhook:', result.error);
+            const webhookSuccess = await sendSlackReminder(reminder);
+            if (webhookSuccess) {
+              await updateLastSent(supabase, reminder.id);
+              results.push({ id: reminder.id, type: 'reminder', status: 'sent', method: 'webhook' });
+            } else {
+              results.push({ id: reminder.id, type: 'reminder', status: 'failed', method: 'both' });
+            }
+          }
         } else {
-          results.push({ id: reminder.id, type: 'reminder', status: 'failed' });
+          // No Slack connection or no default channel - use legacy webhook
+          const success = await sendSlackReminder(reminder);
+          if (success) {
+            await updateLastSent(supabase, reminder.id);
+            results.push({ id: reminder.id, type: 'reminder', status: 'sent', method: 'webhook' });
+          } else {
+            results.push({ id: reminder.id, type: 'reminder', status: 'failed', method: 'webhook' });
+          }
         }
       } catch (error) {
-        console.error(`Error sending reminder ${reminder.id}:`, error);
+        console.error(`[CRON] Error sending reminder ${reminder.id}:`, error);
         results.push({ id: reminder.id, type: 'reminder', status: 'error' });
       }
     }
 
-    // Send automated messages
-    const automatedMessages = await getAutomatedMessagesToSend();
+    // Send automated messages (still using webhooks as they have their own webhook URLs)
+    const automatedMessages = await getAutomatedMessagesToSend(supabase);
     for (const { reminder, automatedMessage } of automatedMessages) {
       try {
         const success = await sendAutomatedMessage(
@@ -107,7 +150,7 @@ export async function GET(request: NextRequest) {
           automatedMessage.webhook_url
         );
         if (success) {
-          await markAutomatedMessageSent(reminder.id, automatedMessage.id);
+          await markAutomatedMessageSent(supabase, reminder.id, automatedMessage.id);
           results.push({ 
             id: reminder.id, 
             type: 'automated_message', 
@@ -123,7 +166,7 @@ export async function GET(request: NextRequest) {
           });
         }
       } catch (error) {
-        console.error(`Error sending automated message ${automatedMessage.id} for reminder ${reminder.id}:`, error);
+        console.error(`[CRON] Error sending automated message ${automatedMessage.id} for reminder ${reminder.id}:`, error);
         results.push({ 
           id: reminder.id, 
           type: 'automated_message', 
@@ -133,14 +176,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Summary statistics
+    const interactiveSent = results.filter(r => r.method === 'interactive' && r.status === 'sent').length;
+    const webhookSent = results.filter(r => r.method === 'webhook' && r.status === 'sent').length;
+    const failed = results.filter(r => r.status === 'failed' || r.status === 'error').length;
+
     return NextResponse.json({
       processed: reminders.length + automatedMessages.length,
       reminders: reminders.length,
       automatedMessages: automatedMessages.length,
+      stats: {
+        interactiveSent,
+        webhookSent,
+        failed,
+      },
       results,
     });
   } catch (error) {
-    console.error('Error in cron job:', error);
+    console.error('[CRON] Error in cron job:', error);
     return NextResponse.json(
       { error: 'Cron job failed' },
       { status: 500 }

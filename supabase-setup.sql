@@ -13,12 +13,18 @@ CREATE TABLE IF NOT EXISTS saved_webhooks (
 CREATE TABLE IF NOT EXISTS reminders (
   id SERIAL PRIMARY KEY,
   text TEXT NOT NULL,
+  description TEXT,
   due_date DATE NOT NULL,
   period_days INTEGER NOT NULL,
   slack_webhook TEXT NOT NULL,
   delay_message TEXT,
   delay_webhooks JSONB DEFAULT '[]'::jsonb,
+  automated_messages JSONB DEFAULT '[]'::jsonb,
+  completion_message JSONB,
+  completion_webhook TEXT,
   is_complete BOOLEAN DEFAULT FALSE,
+  completed_at TIMESTAMP,
+  days_remaining_at_completion INTEGER,
   last_sent TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

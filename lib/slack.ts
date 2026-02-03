@@ -146,3 +146,58 @@ export async function sendAutomatedMessage(
     return false;
   }
 }
+
+// Send completion message to webhook
+export async function sendCompletionMessage(
+  reminderText: string,
+  completionMessage: { title: string; description: string } | string,
+  webhookUrl: string
+): Promise<boolean> {
+  try {
+    // Handle both old string format and new object format
+    let title: string;
+    let description: string;
+    
+    if (typeof completionMessage === 'string') {
+      title = `Reminder Completed: ${reminderText}`;
+      description = completionMessage;
+    } else {
+      title = completionMessage.title || `Reminder Completed: ${reminderText}`;
+      description = completionMessage.description || '';
+    }
+    
+    const messageText = `✅ *${title}*${description ? `\n\n${description}` : ''}`;
+    
+    const message = {
+      text: title,
+      blocks: [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: messageText,
+          },
+        },
+      ],
+    };
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Slack API error: ${response.status} - ${errorText}`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error sending completion message:', error);
+    return false;
+  }
+}

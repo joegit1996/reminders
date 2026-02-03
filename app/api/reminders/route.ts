@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase-server';
 import {
   getAllReminders,
   createReminder,
-  initDatabase,
 } from '@/lib/db';
-
-// Initialize database on first request
-let dbInitialized = false;
 
 export async function GET() {
   try {
-    if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
+    const supabase = await createClient();
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const reminders = await getAllReminders();
+
+    const reminders = await getAllReminders(supabase);
     return NextResponse.json(reminders);
   } catch (error) {
     console.error('Error fetching reminders:', error);
@@ -27,13 +28,28 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
+    const supabase = await createClient();
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { text, description, dueDate, periodDays, slackWebhook, delayMessage, delayWebhooks, automatedMessages } = body;
+    const { 
+      text, 
+      description, 
+      dueDate, 
+      periodDays, 
+      slackWebhook, 
+      delayMessage, 
+      delayWebhooks, 
+      automatedMessages, 
+      completionMessage, 
+      completionWebhook,
+      slackChannelId 
+    } = body;
 
     // Validation
     if (!text || !dueDate || !periodDays || !slackWebhook) {
@@ -94,7 +110,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate completion webhook if provided
+    if (completionWebhook && !completionWebhook.startsWith('https://hooks.slack.com/')) {
+      return NextResponse.json(
+        { error: 'Invalid completion webhook URL' },
+        { status: 400 }
+      );
+    }
+
     const reminder = await createReminder(
+      supabase,
+      user.id,
       text,
       dueDate,
       periodDays,
@@ -102,14 +128,17 @@ export async function POST(request: NextRequest) {
       description || null,
       delayMessage || null,
       delayWebhooks || [],
-      automatedMessages || []
+      automatedMessages || [],
+      completionMessage || null,
+      completionWebhook || null,
+      slackChannelId || null
     );
     
     // Send immediate reminder
     const { sendSlackReminder } = await import('@/lib/slack');
     await sendSlackReminder(reminder);
     const { updateLastSent } = await import('@/lib/db');
-    await updateLastSent(reminder.id);
+    await updateLastSent(supabase, reminder.id);
 
     return NextResponse.json(reminder, { status: 201 });
   } catch (error) {

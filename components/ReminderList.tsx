@@ -7,11 +7,13 @@ import { useState, useEffect } from 'react';
 
 interface Reminder {
   id: number;
+  user_id: string;
   text: string;
   description: string | null;
   due_date: string;
   period_days: number;
   slack_webhook: string;
+  slack_channel_id: string | null;
   delay_message: string | null;
   delay_webhooks: string[];
   automated_messages: Array<{
@@ -23,7 +25,11 @@ interface Reminder {
     sent: boolean;
     sent_at: string | null;
   }>;
+  completion_message: string | null;
+  completion_webhook: string | null;
   is_complete: boolean;
+  completed_at: string | null;
+  days_remaining_at_completion: number | null;
   last_sent: string | null;
   created_at: string;
 }
@@ -40,9 +46,10 @@ interface ReminderListProps {
   onUpdateDueDate: (reminder: Reminder) => void;
   onEditDelayMessage: (reminder: Reminder) => void;
   onEditAutomatedMessages: (reminder: Reminder) => void;
+  onEditCompletion: (reminder: Reminder) => void;
 }
 
-export default function ReminderList({ reminders, onComplete, onUpdateDueDate, onEditDelayMessage, onEditAutomatedMessages }: ReminderListProps) {
+export default function ReminderList({ reminders, onComplete, onUpdateDueDate, onEditDelayMessage, onEditAutomatedMessages, onEditCompletion }: ReminderListProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isSmallMobile = useMediaQuery('(max-width: 480px)');
   const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
@@ -193,7 +200,10 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {sortedReminders.map((reminder) => {
-          const daysRemaining = calculateDaysRemaining(reminder.due_date);
+          // Use frozen value for completed reminders, otherwise calculate dynamically
+          const daysRemaining = reminder.is_complete && reminder.days_remaining_at_completion !== null
+            ? reminder.days_remaining_at_completion
+            : calculateDaysRemaining(reminder.due_date);
           const isOverdue = daysRemaining < 0;
 
           return (
@@ -371,6 +381,26 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                       }}
                     >
                       {isMobile ? 'AUTO' : 'AUTOMATED MESSAGES'}
+                    </button>
+                    <button
+                      onClick={() => onEditCompletion(reminder)}
+                      style={{
+                        ...neoStyles.button,
+                        ...buttonVariants.info,
+                        padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+                        fontSize: isMobile ? '0.7rem' : '0.875rem',
+                        minWidth: isMobile ? 'auto' : '150px',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => {
+                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translate(0, 0)';
+                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                      }}
+                    >
+                      {isMobile ? 'COMPLETE MSG' : 'COMPLETION MESSAGE'}
                     </button>
                     <button
                       onClick={() => onComplete(reminder.id)}
