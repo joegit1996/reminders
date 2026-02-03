@@ -138,51 +138,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If using Slack channel, validate we can send to it BEFORE creating the reminder
+    // If using Slack channel, validate we have a connection
+    let slackConnection = null;
     if (slackChannelId) {
       const { getSlackConnectionByUserId } = await import('@/lib/db');
-      const { sendInteractiveReminder } = await import('@/lib/slack-interactive');
-      const { differenceInDays, format } = await import('date-fns');
       
-      const connection = await getSlackConnectionByUserId(supabase, user.id);
-      if (!connection || !connection.access_token) {
+      slackConnection = await getSlackConnectionByUserId(supabase, user.id);
+      if (!slackConnection || !slackConnection.access_token) {
         return NextResponse.json(
           { error: 'Slack not connected. Please connect Slack in Settings.' },
           { status: 400 }
         );
       }
-      
-      // Calculate days remaining for preview
-      const dueDateObj = new Date(dueDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dueDateObj.setHours(0, 0, 0, 0);
-      const daysRemaining = differenceInDays(dueDateObj, today);
-      const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://reminders-liard.vercel.app';
-      
-      // Test sending the message BEFORE creating the reminder
-      // Use user token for DMs so messages appear in chats, not Apps section
-      const testResult = await sendInteractiveReminder({
-        accessToken: connection.access_token,
-        userAccessToken: connection.user_access_token,
-        channelId: slackChannelId,
-        reminderId: 0, // Temporary ID, will be sent again after creation
-        reminderText: text,
-        reminderDescription: description || null,
-        dueDate: format(dueDateObj, 'MMM dd, yyyy'),
-        daysRemaining,
-        appUrl,
-      });
-      
-      if (!testResult.ok) {
-        console.error('[REMINDERS API] Failed to send Slack message:', testResult.error);
-        return NextResponse.json(
-          { error: `Failed to send Slack message: ${testResult.error}. Please check your channel selection.` },
-          { status: 400 }
-        );
-      }
-      
-      console.log('[REMINDERS API] Slack message sent successfully, creating reminder...');
     }
 
     let reminder;
@@ -215,12 +182,38 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // If we used channel ID, we already sent the message during validation
-    // Otherwise, send via webhook now
-    if (slackChannelId) {
-      // Already sent, just update last_sent
-      const { updateLastSent } = await import('@/lib/db');
-      await updateLastSent(supabase, reminder.id);
+    // Send the Slack message with the actual reminder ID
+    if (slackChannelId && slackConnection) {
+      const { sendInteractiveReminder } = await import('@/lib/slack-interactive');
+      const { differenceInDays, format } = await import('date-fns');
+      
+      const dueDateObj = new Date(dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dueDateObj.setHours(0, 0, 0, 0);
+      const daysRemaining = differenceInDays(dueDateObj, today);
+      const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://reminders-liard.vercel.app';
+      
+      // Send with actual reminder ID so Mark Complete button works
+      const sendResult = await sendInteractiveReminder({
+        accessToken: slackConnection.access_token,
+        userAccessToken: slackConnection.user_access_token,
+        channelId: slackChannelId,
+        reminderId: reminder.id,
+        reminderText: text,
+        reminderDescription: description || null,
+        dueDate: format(dueDateObj, 'MMM dd, yyyy'),
+        daysRemaining,
+        appUrl,
+      });
+      
+      if (sendResult.ok) {
+        const { updateLastSent } = await import('@/lib/db');
+        await updateLastSent(supabase, reminder.id);
+      } else {
+        console.error('[REMINDERS API] Failed to send Slack message:', sendResult.error);
+        // Reminder was created, but message failed - don't delete, just warn
+      }
     } else if (slackWebhook) {
       // Legacy webhook flow
       try {

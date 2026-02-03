@@ -279,31 +279,7 @@ async function executeFunction(
         return { error: 'Slack not connected. Please connect Slack in Settings first.' };
       }
       
-      // Calculate days remaining for the message
-      const dueDateObj = new Date(args.dueDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dueDateObj.setHours(0, 0, 0, 0);
-      const daysRemaining = differenceInDays(dueDateObj, today);
-      const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://reminders-liard.vercel.app';
-      
-      // Test sending the message FIRST
-      const testResult = await sendInteractiveReminder({
-        accessToken: connection.access_token,
-        channelId: args.slackChannelId,
-        reminderId: 0,
-        reminderText: args.text,
-        reminderDescription: args.description || null,
-        dueDate: format(dueDateObj, 'MMM dd, yyyy'),
-        daysRemaining,
-        appUrl,
-      });
-      
-      if (!testResult.ok) {
-        return { error: `Failed to send Slack message: ${testResult.error}. Please check channel selection.` };
-      }
-      
-      // Create the reminder with new Slack channel fields
+      // Create the reminder FIRST
       const reminder = await createReminder(
         supabase,
         userId,
@@ -325,8 +301,35 @@ async function executeFunction(
         args.completionSlackChannelName || null
       );
       
-      // Update last sent since we already sent the message
-      await updateLastSent(supabase, reminder.id);
+      // Calculate days remaining for the message
+      const dueDateObj = new Date(args.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dueDateObj.setHours(0, 0, 0, 0);
+      const daysRemaining = differenceInDays(dueDateObj, today);
+      const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://reminders-liard.vercel.app';
+      
+      // Send the message with the actual reminder ID so Mark Complete works
+      const sendResult = await sendInteractiveReminder({
+        accessToken: connection.access_token,
+        userAccessToken: connection.user_access_token,
+        channelId: args.slackChannelId,
+        reminderId: reminder.id,
+        reminderText: args.text,
+        reminderDescription: args.description || null,
+        dueDate: format(dueDateObj, 'MMM dd, yyyy'),
+        daysRemaining,
+        appUrl,
+      });
+      
+      if (sendResult.ok) {
+        await updateLastSent(supabase, reminder.id);
+      } else {
+        console.error('[AGENT] Failed to send Slack message:', sendResult.error);
+        // Reminder created but message failed - return with warning
+        return { success: true, reminder, warning: `Reminder created but Slack message failed: ${sendResult.error}` };
+      }
+      
       return { success: true, reminder };
     
     case 'list_reminders':
