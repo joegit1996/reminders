@@ -21,8 +21,8 @@ export async function GET() {
 
     const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/slack/oauth-callback`;
     
-    // Bot scopes for sending messages and reading channels
-    const scopes = 'chat:write,channels:read,groups:read';
+    // Bot scopes for sending messages and reading channels, DMs, and users
+    const scopes = 'chat:write,channels:read,groups:read,im:read,mpim:read,users:read';
     
     // Build Slack OAuth URL
     const slackOAuthUrl = new URL('https://slack.com/oauth/v2/authorize');

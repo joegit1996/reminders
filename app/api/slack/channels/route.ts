@@ -96,6 +96,9 @@ export async function GET() {
       }
     );
     const dmsData = await dmsResponse.json();
+    if (!dmsData.ok) {
+      console.log('[SLACK CHANNELS] DMs fetch failed:', dmsData.error);
+    }
 
     // Fetch group DMs (mpim = multi-person instant messages)
     const groupDmsResponse = await fetch(
@@ -107,6 +110,9 @@ export async function GET() {
       }
     );
     const groupDmsData = await groupDmsResponse.json();
+    if (!groupDmsData.ok) {
+      console.log('[SLACK CHANNELS] Group DMs fetch failed:', groupDmsData.error);
+    }
 
     // Fetch users to get names for DMs
     const usersResponse = await fetch(
@@ -118,6 +124,9 @@ export async function GET() {
       }
     );
     const usersData = await usersResponse.json();
+    if (!usersData.ok) {
+      console.log('[SLACK CHANNELS] Users fetch failed:', usersData.error);
+    }
     
     // Create a map of user IDs to names
     const userMap = new Map<string, string>();
