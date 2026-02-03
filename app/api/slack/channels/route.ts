@@ -154,12 +154,12 @@ export async function GET() {
       }
     }
 
-    // Add DMs with user names
+    // Add DMs with user names - IMPORTANT: Use user ID (not channel ID) for sending
     if (dmsData.ok && dmsData.channels) {
       for (const dm of dmsData.channels) {
         const userName = userMap.get(dm.user) || 'Unknown User';
         conversations.push({
-          id: dm.id,
+          id: dm.user,  // Use user ID so bot can send DMs via conversations.open
           name: userName,
           type: 'dm',
           is_private: true,

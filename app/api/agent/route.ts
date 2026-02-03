@@ -26,7 +26,7 @@ const openai = new OpenAI({
 const functionDefinitions = [
   {
     name: 'create_reminder',
-    description: 'Create a new reminder. CRITICAL: Always call list_webhooks first, then match webhook names from user prompt.',
+    description: 'Create a new reminder. CRITICAL: Always call list_slack_channels first to get available channels, then use the channel ID and name.',
     parameters: {
       type: 'object',
       properties: {
@@ -46,18 +46,25 @@ const functionDefinitions = [
           type: 'number',
           description: 'Number of days between reminders (minimum 1)',
         },
-        slackWebhook: {
+        slackChannelId: {
           type: 'string',
-          description: 'Slack webhook URL from list_webhooks. Match name to user reference (e.g., "for youssef" = webhook named "youssef").',
+          description: 'Slack channel/user ID from list_slack_channels. Match name to user reference (e.g., "for youssef" = channel/DM named "youssef").',
+        },
+        slackChannelName: {
+          type: 'string',
+          description: 'Display name of the Slack channel/DM (from list_slack_channels)',
         },
         delayMessage: {
           type: 'string',
           description: 'Optional message sent when due date is updated',
         },
-        delayWebhooks: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Optional array of webhook URLs for delay messages',
+        delaySlackChannelId: {
+          type: 'string',
+          description: 'Optional Slack channel ID for delay messages',
+        },
+        delaySlackChannelName: {
+          type: 'string',
+          description: 'Optional display name for delay message channel',
         },
         automatedMessages: {
           type: 'array',
@@ -67,9 +74,10 @@ const functionDefinitions = [
               days_before: { type: 'number', description: 'Days before due date to send' },
               title: { type: 'string', description: 'Message title' },
               description: { type: 'string', description: 'Message description' },
-              webhook_url: { type: 'string', description: 'Webhook URL to send to' },
+              slack_channel_id: { type: 'string', description: 'Slack channel ID to send to' },
+              slack_channel_name: { type: 'string', description: 'Display name of the channel' },
             },
-            required: ['days_before', 'title', 'description', 'webhook_url'],
+            required: ['days_before', 'title', 'description', 'slack_channel_id'],
           },
           description: 'Optional array of automated messages to send before due date',
         },
@@ -77,12 +85,16 @@ const functionDefinitions = [
           type: 'string',
           description: 'Optional message sent when reminder is marked as complete',
         },
-        completionWebhook: {
+        completionSlackChannelId: {
           type: 'string',
-          description: 'Optional webhook URL to send completion message to',
+          description: 'Optional Slack channel ID for completion message',
+        },
+        completionSlackChannelName: {
+          type: 'string',
+          description: 'Optional display name for completion message channel',
         },
       },
-      required: ['text', 'dueDate', 'periodDays', 'slackWebhook'],
+      required: ['text', 'dueDate', 'periodDays', 'slackChannelId', 'slackChannelName'],
     },
   },
   {
@@ -197,8 +209,16 @@ const functionDefinitions = [
     },
   },
   {
+    name: 'list_slack_channels',
+    description: 'Get all available Slack channels, DMs, and users. ALWAYS call this first before creating a reminder.',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
     name: 'list_webhooks',
-    description: 'Get all saved webhooks with their names',
+    description: 'LEGACY: Get all saved webhooks with their names (for old reminders only)',
     parameters: {
       type: 'object',
       properties: {},
@@ -248,23 +268,64 @@ async function executeFunction(
   
   switch (name) {
     case 'create_reminder':
+      // Import required functions for Slack channel-based creation
+      const { getSlackConnectionByUserId } = await import('@/lib/db');
+      const { sendInteractiveReminder } = await import('@/lib/slack-interactive');
+      const { differenceInDays, format } = await import('date-fns');
+      
+      // Validate Slack connection
+      const connection = await getSlackConnectionByUserId(supabase, userId);
+      if (!connection || !connection.access_token) {
+        return { error: 'Slack not connected. Please connect Slack in Settings first.' };
+      }
+      
+      // Calculate days remaining for the message
+      const dueDateObj = new Date(args.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dueDateObj.setHours(0, 0, 0, 0);
+      const daysRemaining = differenceInDays(dueDateObj, today);
+      const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://reminders-liard.vercel.app';
+      
+      // Test sending the message FIRST
+      const testResult = await sendInteractiveReminder({
+        accessToken: connection.access_token,
+        channelId: args.slackChannelId,
+        reminderId: 0,
+        reminderText: args.text,
+        reminderDescription: args.description || null,
+        dueDate: format(dueDateObj, 'MMM dd, yyyy'),
+        daysRemaining,
+        appUrl,
+      });
+      
+      if (!testResult.ok) {
+        return { error: `Failed to send Slack message: ${testResult.error}. Please check channel selection.` };
+      }
+      
+      // Create the reminder with new Slack channel fields
       const reminder = await createReminder(
         supabase,
         userId,
         args.text,
         args.dueDate,
         args.periodDays,
-        args.slackWebhook,
+        '', // No webhook - using channel
         args.description || null,
         args.delayMessage || null,
-        args.delayWebhooks || [],
+        [], // No delay webhooks
         args.automatedMessages || [],
         args.completionMessage || null,
-        args.completionWebhook || null
+        null, // No completion webhook
+        args.slackChannelId || null,
+        args.slackChannelName || null,
+        args.delaySlackChannelId || null,
+        args.delaySlackChannelName || null,
+        args.completionSlackChannelId || null,
+        args.completionSlackChannelName || null
       );
-      // Send immediate reminder
-      const { sendSlackReminder } = await import('@/lib/slack');
-      await sendSlackReminder(reminder);
+      
+      // Update last sent since we already sent the message
       await updateLastSent(supabase, reminder.id);
       return { success: true, reminder };
     
@@ -292,6 +353,72 @@ async function executeFunction(
       const completed = await markReminderComplete(supabase, args.id);
       return { success: true, reminder: completed };
     
+    case 'list_slack_channels':
+      // Fetch Slack connection for this user
+      const { getSlackConnection } = await import('@/lib/db');
+      const slackConn = await getSlackConnection(supabase);
+      
+      if (!slackConn || !slackConn.access_token) {
+        return { error: 'Slack not connected. Please connect Slack in Settings first.' };
+      }
+      
+      // Use the same logic as /api/slack/channels
+      const readToken = slackConn.user_access_token || slackConn.access_token;
+      
+      // Fetch users first
+      const usersResp = await fetch('https://slack.com/api/users.list?limit=200', {
+        headers: { Authorization: `Bearer ${readToken}` },
+      });
+      const usersResult = await usersResp.json();
+      const userMapForAgent = new Map<string, string>();
+      if (usersResult.ok && usersResult.members) {
+        for (const u of usersResult.members) {
+          if (!u.deleted && !u.is_bot) {
+            userMapForAgent.set(u.id, u.profile?.display_name || u.profile?.real_name || u.real_name || u.name);
+          }
+        }
+      }
+      
+      // Fetch channels
+      const channelsResp = await fetch('https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=100&exclude_archived=true', {
+        headers: { Authorization: `Bearer ${readToken}` },
+      });
+      const channelsResult = await channelsResp.json();
+      
+      // Fetch DMs
+      const dmsResp = await fetch('https://slack.com/api/conversations.list?types=im&limit=100', {
+        headers: { Authorization: `Bearer ${readToken}` },
+      });
+      const dmsResult = await dmsResp.json();
+      
+      const channels: Array<{ id: string; name: string; type: string }> = [];
+      
+      if (channelsResult.ok && channelsResult.channels) {
+        for (const ch of channelsResult.channels) {
+          channels.push({
+            id: ch.id,
+            name: ch.is_private ? `🔒${ch.name}` : `#${ch.name}`,
+            type: ch.is_private ? 'private_channel' : 'channel',
+          });
+        }
+      }
+      
+      if (dmsResult.ok && dmsResult.channels) {
+        for (const dm of dmsResult.channels) {
+          const userName = userMapForAgent.get(dm.user) || 'Unknown';
+          channels.push({
+            id: dm.user, // Use user ID for DMs
+            name: `@${userName}`,
+            type: 'dm',
+          });
+        }
+      }
+      
+      return {
+        channels,
+        message: `Found ${channels.length} Slack channels/DMs. Available: ${channels.slice(0, 20).map(c => `"${c.name}" (ID: ${c.id})`).join(', ')}${channels.length > 20 ? '...' : ''}`,
+      };
+    
     case 'list_webhooks':
       const webhooks = await getAllSavedWebhooks(supabase);
       const serializableWebhooks = webhooks.map((w: any) => ({
@@ -302,7 +429,7 @@ async function executeFunction(
       }));
       return { 
         webhooks: serializableWebhooks,
-        message: `Found ${serializableWebhooks.length} saved webhooks. Available webhooks: ${serializableWebhooks.map((w: any) => `"${w.name}" (${w.webhook_url})`).join(', ')}`
+        message: `LEGACY: Found ${serializableWebhooks.length} saved webhooks. Use list_slack_channels instead for new reminders.`
       };
     
     case 'search_reminders':
@@ -557,11 +684,11 @@ export async function POST(request: NextRequest) {
       role: 'system' as const,
       content: `You are a helpful AI assistant for managing reminders.
 
-CRITICAL INSTRUCTIONS FOR WEBHOOK SELECTION:
-1. ALWAYS call list_webhooks FIRST before creating any reminder
-2. When user says "for [name]" (e.g., "for youssef", "for mina"), match it to the webhook with that exact name
-3. Use ONLY the actual webhook URLs returned by list_webhooks - NEVER use placeholder/example URLs
-4. If no name match is found, ask the user which webhook to use
+CRITICAL INSTRUCTIONS FOR SLACK CHANNEL SELECTION:
+1. ALWAYS call list_slack_channels FIRST before creating any reminder
+2. When user says "for [name]" (e.g., "for youssef", "for mina"), match it to a DM with that name (look for @name)
+3. Use the EXACT channel ID and name from list_slack_channels
+4. If no name match is found, ask the user which channel/DM to use
 
 DESCRIPTION GUIDELINES:
 - Keep descriptions concise and relevant
@@ -570,9 +697,9 @@ DESCRIPTION GUIDELINES:
 
 Example workflow:
 User: "create reminder for youssef about X"
-1. Call list_webhooks
-2. Find webhook named "youssef" 
-3. Use that webhook's URL in create_reminder`,
+1. Call list_slack_channels
+2. Find DM named "@youssef" or similar
+3. Use that channel's ID and name in create_reminder`,
     };
 
     try {
@@ -605,7 +732,7 @@ User: "create reminder for youssef about X"
 
       // Check if the model wants to call a function
       if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-        const readOnlyOperations = ['list_reminders', 'get_reminder', 'search_reminders', 'list_webhooks'];
+        const readOnlyOperations = ['list_reminders', 'get_reminder', 'search_reminders', 'list_webhooks', 'list_slack_channels'];
         
         const allToolCalls = responseMessage.tool_calls.filter((tc: any) => tc.type === 'function');
         console.log('[AGENT] Total tool calls:', allToolCalls.length);
