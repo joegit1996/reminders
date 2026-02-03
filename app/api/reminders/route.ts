@@ -161,8 +161,10 @@ export async function POST(request: NextRequest) {
       const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://reminders-liard.vercel.app';
       
       // Test sending the message BEFORE creating the reminder
+      // Use user token for DMs so messages appear in chats, not Apps section
       const testResult = await sendInteractiveReminder({
         accessToken: connection.access_token,
+        userAccessToken: connection.user_access_token,
         channelId: slackChannelId,
         reminderId: 0, // Temporary ID, will be sent again after creation
         reminderText: text,

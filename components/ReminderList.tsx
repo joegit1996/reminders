@@ -41,11 +41,6 @@ interface Reminder {
   created_at: string;
 }
 
-interface SavedWebhook {
-  id: number;
-  name: string;
-  webhook_url: string;
-}
 
 interface ReminderListProps {
   reminders: Reminder[];
@@ -54,34 +49,27 @@ interface ReminderListProps {
   onEditDelayMessage: (reminder: Reminder) => void;
   onEditAutomatedMessages: (reminder: Reminder) => void;
   onEditCompletion: (reminder: Reminder) => void;
+  onDelete?: (id: number) => void;
 }
 
-export default function ReminderList({ reminders, onComplete, onUpdateDueDate, onEditDelayMessage, onEditAutomatedMessages, onEditCompletion }: ReminderListProps) {
+export default function ReminderList({ reminders, onComplete, onUpdateDueDate, onEditDelayMessage, onEditAutomatedMessages, onEditCompletion, onDelete }: ReminderListProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isSmallMobile = useMediaQuery('(max-width: 480px)');
-  const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [webhookFilter, setWebhookFilter] = useState<string>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
 
-  useEffect(() => {
-    fetchSavedWebhooks();
-  }, []);
+  // Get unique channels from reminders
+  const uniqueChannels = Array.from(new Set(
+    reminders
+      .filter(r => r.slack_channel_id && r.slack_channel_name)
+      .map(r => JSON.stringify({ id: r.slack_channel_id, name: r.slack_channel_name }))
+  )).map(s => JSON.parse(s) as { id: string; name: string });
 
-  const fetchSavedWebhooks = async () => {
-    try {
-      const response = await fetch('/api/webhooks');
-      if (response.ok) {
-        const data = await response.json();
-        setSavedWebhooks(data);
-      }
-    } catch (error) {
-      console.error('Error fetching saved webhooks:', error);
+  const getChannelDisplay = (reminder: Reminder): string => {
+    if (reminder.slack_channel_name) {
+      return reminder.slack_channel_name;
     }
-  };
-
-  const getWebhookName = (webhookUrl: string): string => {
-    const webhook = savedWebhooks.find(wh => wh.webhook_url === webhookUrl);
-    return webhook ? webhook.name : webhookUrl.substring(0, 30) + '...';
+    return 'No channel';
   };
 
   if (reminders.length === 0) {
@@ -100,10 +88,10 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
     return differenceInDays(due, today);
   };
 
-  // Filter reminders by webhook
-  const filteredReminders = webhookFilter === 'all' 
+  // Filter reminders by channel
+  const filteredReminders = channelFilter === 'all' 
     ? reminders 
-    : reminders.filter(reminder => reminder.slack_webhook === webhookFilter);
+    : reminders.filter(reminder => reminder.slack_channel_id === channelFilter);
 
   // Sort reminders by due date
   const sortedReminders = [...filteredReminders].sort((a, b) => {
@@ -167,41 +155,43 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
           </div>
 
           {/* Filter Control */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label htmlFor="webhookFilter" style={{ 
-              fontSize: isMobile ? '0.75rem' : '0.875rem', 
-              fontWeight: '700', 
-              color: '#000000',
-              whiteSpace: 'nowrap',
-            }}>
-              FILTER:
-            </label>
-            <select
-              id="webhookFilter"
-              value={webhookFilter}
-              onChange={(e) => setWebhookFilter(e.target.value)}
-              style={{
-                ...neoStyles.input,
-                padding: '0.5rem 0.75rem',
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                cursor: 'pointer',
-                minWidth: '150px',
-              }}
-              onFocus={(e) => {
-                e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-              }}
-              onBlur={(e) => {
-                e.target.style.boxShadow = 'none';
-              }}
-            >
-              <option value="all">All Webhooks</option>
-              {savedWebhooks.map(webhook => (
-                <option key={webhook.id} value={webhook.webhook_url}>
-                  {webhook.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {uniqueChannels.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <label htmlFor="channelFilter" style={{ 
+                fontSize: isMobile ? '0.75rem' : '0.875rem', 
+                fontWeight: '700', 
+                color: '#000000',
+                whiteSpace: 'nowrap',
+              }}>
+                CHANNEL:
+              </label>
+              <select
+                id="channelFilter"
+                value={channelFilter}
+                onChange={(e) => setChannelFilter(e.target.value)}
+                style={{
+                  ...neoStyles.input,
+                  padding: '0.5rem 0.75rem',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  cursor: 'pointer',
+                  minWidth: '150px',
+                }}
+                onFocus={(e) => {
+                  e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                }}
+                onBlur={(e) => {
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                <option value="all">All Channels</option>
+                {uniqueChannels.map(channel => (
+                  <option key={channel.id} value={channel.id}>
+                    {channel.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
       
@@ -297,7 +287,7 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                   )}
                 </div>
 
-                {/* Webhook and Automated Messages */}
+                {/* Channel and Automated Messages */}
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -307,7 +297,7 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                   fontWeight: '600',
                 }}>
                   <div>
-                    🔗 WEBHOOK: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
+                    💬 CHANNEL: <strong>{getChannelDisplay(reminder)}</strong>
                   </div>
                   {reminder.automated_messages && reminder.automated_messages.length > 0 && (
                     <div>
@@ -445,6 +435,34 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                   }}>
                     ✓ COMPLETE
                   </span>
+                )}
+                {/* Delete Button */}
+                {onDelete && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this reminder? This cannot be undone.')) {
+                        onDelete(reminder.id);
+                      }
+                    }}
+                    style={{
+                      ...neoStyles.button,
+                      background: '#FF6B6B',
+                      color: '#000000',
+                      padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+                      fontSize: isMobile ? '0.7rem' : '0.875rem',
+                      minWidth: isMobile ? 'auto' : '150px',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={(e) => {
+                      Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translate(0, 0)';
+                      e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                    }}
+                  >
+                    {isMobile ? '🗑️' : '🗑️ DELETE'}
+                  </button>
                 )}
               </div>
             </div>

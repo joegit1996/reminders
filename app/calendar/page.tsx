@@ -12,28 +12,21 @@ interface Reminder {
   description: string | null;
   due_date: string;
   period_days: number;
-  slack_webhook: string;
+  slack_channel_id: string | null;
+  slack_channel_name: string | null;
   delay_message: string | null;
-  delay_webhooks: string[];
   is_complete: boolean;
   last_sent: string | null;
   created_at: string;
 }
 
-interface SavedWebhook {
-  id: number;
-  name: string;
-  webhook_url: string;
-}
-
 export default function CalendarPage() {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedWebhookFilter, setSelectedWebhookFilter] = useState<string>('all');
+  const [selectedChannelFilter, setSelectedChannelFilter] = useState<string>('all');
   const [hoveredReminder, setHoveredReminder] = useState<{ reminder: Reminder; x: number; y: number } | null>(null);
   const [showShareLinks, setShowShareLinks] = useState(false);
 
@@ -55,19 +48,11 @@ export default function CalendarPage() {
 
   const fetchData = async () => {
     try {
-      const [remindersRes, webhooksRes] = await Promise.all([
-        fetch('/api/reminders'),
-        fetch('/api/webhooks'),
-      ]);
+      const remindersRes = await fetch('/api/reminders');
 
       if (remindersRes.ok) {
         const remindersData = await remindersRes.json();
         setReminders(remindersData);
-      }
-
-      if (webhooksRes.ok) {
-        const webhooksData = await webhooksRes.json();
-        setSavedWebhooks(webhooksData);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -76,9 +61,18 @@ export default function CalendarPage() {
     }
   };
 
-  const getWebhookName = (webhookUrl: string): string => {
-    const webhook = savedWebhooks.find(wh => wh.webhook_url === webhookUrl);
-    return webhook ? webhook.name : webhookUrl.substring(0, 30) + '...';
+  // Get unique channels from reminders
+  const uniqueChannels = Array.from(new Set(
+    reminders
+      .filter(r => r.slack_channel_id && r.slack_channel_name)
+      .map(r => JSON.stringify({ id: r.slack_channel_id, name: r.slack_channel_name }))
+  )).map(s => JSON.parse(s) as { id: string; name: string });
+
+  const getChannelDisplay = (reminder: Reminder): string => {
+    if (reminder.slack_channel_name) {
+      return reminder.slack_channel_name;
+    }
+    return 'No channel';
   };
 
   const getRemindersForDate = (date: Date): Reminder[] => {
@@ -87,10 +81,10 @@ export default function CalendarPage() {
       const dueDate = new Date(reminder.due_date);
       const matchesDate = isSameDay(dueDate, date);
       
-      // Apply webhook filter
-      if (selectedWebhookFilter !== 'all') {
-        const matchesWebhook = reminder.slack_webhook === selectedWebhookFilter;
-        return matchesDate && matchesWebhook;
+      // Apply channel filter
+      if (selectedChannelFilter !== 'all') {
+        const matchesChannel = reminder.slack_channel_id === selectedChannelFilter;
+        return matchesDate && matchesChannel;
       }
       
       return matchesDate;
@@ -265,45 +259,47 @@ export default function CalendarPage() {
             }}>
               {format(currentDate, 'MMMM yyyy').toUpperCase()}
             </h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: isMobile ? '1 1 100%' : '0 1 auto', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
-              <label htmlFor="webhookFilter" style={{
-                fontSize: isMobile ? '0.875rem' : '1rem',
-                fontWeight: '700',
-                color: '#000000',
-                whiteSpace: 'nowrap',
-              }}>
-                FILTER:
-              </label>
-              <select
-                id="webhookFilter"
-                value={selectedWebhookFilter}
-                onChange={(e) => setSelectedWebhookFilter(e.target.value)}
-                style={{
-                  ...neoStyles.input,
-                  padding: '0.5rem 1rem',
+            {uniqueChannels.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: isMobile ? '1 1 100%' : '0 1 auto', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
+                <label htmlFor="channelFilter" style={{
                   fontSize: isMobile ? '0.875rem' : '1rem',
-                  cursor: 'pointer',
-                  width: '100%',
-                  maxWidth: '100%',
-                  minWidth: 0,
-                  boxSizing: 'border-box',
-                  flex: '1 1 auto',
-                }}
-                onFocus={(e) => {
-                  e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-                }}
-                onBlur={(e) => {
-                  e.target.style.boxShadow = 'none';
-                }}
-              >
-                <option value="all">All Webhooks</option>
-                {savedWebhooks.map(webhook => (
-                  <option key={webhook.id} value={webhook.webhook_url}>
-                    {webhook.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                  fontWeight: '700',
+                  color: '#000000',
+                  whiteSpace: 'nowrap',
+                }}>
+                  CHANNEL:
+                </label>
+                <select
+                  id="channelFilter"
+                  value={selectedChannelFilter}
+                  onChange={(e) => setSelectedChannelFilter(e.target.value)}
+                  style={{
+                    ...neoStyles.input,
+                    padding: '0.5rem 1rem',
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    cursor: 'pointer',
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    flex: '1 1 auto',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="all">All Channels</option>
+                  {uniqueChannels.map(channel => (
+                    <option key={channel.id} value={channel.id}>
+                      {channel.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -498,7 +494,7 @@ export default function CalendarPage() {
                 🔄 PERIOD: <strong>{hoveredReminder.reminder.period_days} DAY{hoveredReminder.reminder.period_days !== 1 ? 'S' : ''}</strong>
               </div>
               <div>
-                🔗 WEBHOOK: <strong>{getWebhookName(hoveredReminder.reminder.slack_webhook)}</strong>
+                💬 CHANNEL: <strong>{getChannelDisplay(hoveredReminder.reminder)}</strong>
               </div>
             </div>
           </div>
@@ -579,7 +575,7 @@ export default function CalendarPage() {
               </div>
               {getRemindersForDate(selectedDate).length === 0 ? (
                 <p style={{ color: '#000000', fontWeight: '700', textAlign: 'center', padding: '2rem' }}>
-                  NO REMINDERS FOR THIS DATE{selectedWebhookFilter !== 'all' ? ` WITH SELECTED WEBHOOK FILTER` : ''}
+                  NO REMINDERS FOR THIS DATE{selectedChannelFilter !== 'all' ? ` WITH SELECTED CHANNEL` : ''}
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -625,7 +621,7 @@ export default function CalendarPage() {
                           🔄 PERIOD: <strong>{reminder.period_days} DAY{reminder.period_days !== 1 ? 'S' : ''}</strong>
                         </span>
                         <span>
-                          🔗 WEBHOOK: <strong>{getWebhookName(reminder.slack_webhook)}</strong>
+                          💬 CHANNEL: <strong>{getChannelDisplay(reminder)}</strong>
                         </span>
                       </div>
                     </div>
@@ -636,167 +632,7 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {/* Share Calendar Section */}
-        <div style={{
-          marginTop: '2rem',
-        }}>
-          <button
-            type="button"
-            onClick={() => setShowShareLinks(!showShareLinks)}
-            style={{
-              ...neoStyles.button,
-              ...buttonVariants.neutral,
-              width: '100%',
-              padding: '0.75rem',
-              fontSize: '0.875rem',
-              marginBottom: showShareLinks ? '1rem' : '0',
-              background: showShareLinks ? '#E5E5E5' : '#F3F4F6',
-            }}
-            onMouseEnter={(e) => {
-              Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translate(0, 0)';
-              e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-            }}
-          >
-            {showShareLinks ? '▼ HIDE' : '▶ SHOW'} SHARE CALENDAR LINKS
-          </button>
-          
-          {showShareLinks && (
-            <div style={{
-              padding: '1.5rem',
-              background: '#FFFFFF',
-              borderRadius: '0',
-              border: '4px solid #000000',
-              boxShadow: '8px 8px 0px 0px #000000',
-            }}>
-              <p style={{ color: '#000000', fontSize: '0.875rem', marginBottom: '1rem', fontWeight: '700' }}>
-                Copy these links to share a public calendar view. Anyone with the link can view reminders.
-              </p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {/* All Webhooks Link */}
-                <div style={{
-                  padding: '1rem',
-                  background: '#FFFFFF',
-                  borderRadius: '0',
-                  border: '3px solid #000000',
-                  boxShadow: '4px 4px 0px 0px #000000',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: '900', marginBottom: '0.25rem', color: '#000000', textTransform: 'uppercase' }}>
-                        ALL WEBHOOKS
-                      </div>
-                      <div style={{
-                        fontSize: '0.75rem',
-                        color: '#000000',
-                        wordBreak: 'break-all',
-                        fontFamily: 'monospace',
-                        background: '#FFFFFF',
-                        border: '2px solid #000000',
-                        padding: '0.5rem',
-                        borderRadius: '0',
-                        marginTop: '0.5rem',
-                        fontWeight: '600',
-                      }}>
-                        {typeof window !== 'undefined' ? `${window.location.origin}/calendar/public` : '/calendar/public'}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const url = typeof window !== 'undefined' ? `${window.location.origin}/calendar/public` : '/calendar/public';
-                        navigator.clipboard.writeText(url);
-                        alert('Link copied to clipboard!');
-                      }}
-                      style={{
-                        ...neoStyles.button,
-                        ...buttonVariants.primary,
-                        padding: '0.5rem 1rem',
-                        fontSize: '0.875rem',
-                        whiteSpace: 'nowrap',
-                      }}
-                      onMouseEnter={(e) => {
-                        Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translate(0, 0)';
-                        e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                      }}
-                    >
-                      COPY LINK
-                    </button>
-                  </div>
-                </div>
-
-                {/* Individual Webhook Links */}
-                {savedWebhooks.map(webhook => {
-                  const shareUrl = typeof window !== 'undefined' 
-                    ? `${window.location.origin}/calendar/public?webhook=${encodeURIComponent(webhook.webhook_url)}`
-                    : `/calendar/public?webhook=${encodeURIComponent(webhook.webhook_url)}`;
-                  
-                  return (
-                    <div
-                      key={webhook.id}
-                      style={{
-                        padding: '1rem',
-                        background: '#FFFFFF',
-                        borderRadius: '0',
-                        border: '3px solid #000000',
-                        boxShadow: '4px 4px 0px 0px #000000',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: '900', marginBottom: '0.25rem', color: '#000000', textTransform: 'uppercase' }}>
-                            {webhook.name}
-                          </div>
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: '#000000',
-                            wordBreak: 'break-all',
-                            fontFamily: 'monospace',
-                            background: '#FFFFFF',
-                            border: '2px solid #000000',
-                            padding: '0.5rem',
-                            borderRadius: '0',
-                            marginTop: '0.5rem',
-                            fontWeight: '600',
-                          }}>
-                            {shareUrl}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(shareUrl);
-                            alert('Link copied to clipboard!');
-                          }}
-                          style={{
-                            ...neoStyles.button,
-                            ...buttonVariants.primary,
-                            padding: '0.5rem 1rem',
-                            fontSize: '0.875rem',
-                            whiteSpace: 'nowrap',
-                          }}
-                          onMouseEnter={(e) => {
-                            Object.assign(e.currentTarget.style, neoStyles.buttonHover);
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translate(0, 0)';
-                            e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
-                          }}
-                        >
-                          COPY LINK
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Share Calendar Section - Hidden (legacy webhook-based) */}
       </div>
     </main>
   );

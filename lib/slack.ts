@@ -30,6 +30,7 @@ export async function sendSlackReminder(reminder: Reminder, supabaseClient?: Sup
       
       const result = await sendInteractiveReminder({
         accessToken: connection.access_token,
+        userAccessToken: connection.user_access_token,
         channelId: reminder.slack_channel_id,
         reminderId: reminder.id,
         reminderText: reminder.text,

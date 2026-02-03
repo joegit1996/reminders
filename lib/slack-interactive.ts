@@ -16,6 +16,7 @@ interface SlackBlock {
 
 export interface InteractiveReminderOptions {
   accessToken: string;
+  userAccessToken?: string | null;  // User token for sending as the user (appears in DMs, not Apps)
   channelId: string;
   reminderId: number;
   reminderText: string;
@@ -28,6 +29,7 @@ export interface InteractiveReminderOptions {
 export async function sendInteractiveReminder(options: InteractiveReminderOptions): Promise<{ ok: boolean; ts?: string; error?: string }> {
   const {
     accessToken,
+    userAccessToken,
     channelId,
     reminderId,
     reminderText,
@@ -36,6 +38,10 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
     daysRemaining,
     appUrl,
   } = options;
+  
+  // Use user token for DMs so messages appear in regular chats, not Apps section
+  const isUserDM = channelId.startsWith('U');
+  const sendToken = (isUserDM && userAccessToken) ? userAccessToken : accessToken;
 
   const statusEmoji = daysRemaining <= 0 ? '🚨' : daysRemaining <= 3 ? '⚠️' : '⏰';
   const statusText = daysRemaining <= 0 
@@ -102,35 +108,40 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
   ];
 
   try {
-    // For DMs (D...) or user IDs (U...), open a conversation first
+    console.log('[SLACK INTERACTIVE] Sending to channel:', channelId, 'using', isUserDM && userAccessToken ? 'user token' : 'bot token');
+    
+    // For user IDs (U...), open a conversation first to get the DM channel
     let targetChannel = channelId;
-    if (channelId.startsWith('D') || channelId.startsWith('U')) {
+    if (channelId.startsWith('U')) {
+      console.log('[SLACK INTERACTIVE] Opening DM with user:', channelId);
       const openResponse = await fetch('https://slack.com/api/conversations.open', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${sendToken}`,
         },
         body: JSON.stringify({
-          users: channelId.startsWith('U') ? channelId : undefined,
-          channel: channelId.startsWith('D') ? channelId : undefined,
+          users: channelId,  // Single user ID as string
         }),
       });
       const openResult = await openResponse.json();
+      console.log('[SLACK INTERACTIVE] conversations.open result:', JSON.stringify(openResult));
       
       if (openResult.ok && openResult.channel?.id) {
         targetChannel = openResult.channel.id;
-        console.log('[SLACK INTERACTIVE] Opened conversation:', targetChannel);
+        console.log('[SLACK INTERACTIVE] Opened DM channel:', targetChannel);
       } else {
-        console.log('[SLACK INTERACTIVE] conversations.open failed:', openResult.error, '- trying direct send');
+        console.error('[SLACK INTERACTIVE] conversations.open failed:', openResult.error);
+        return { ok: false, error: openResult.error || 'Failed to open DM conversation' };
       }
     }
     
+    console.log('[SLACK INTERACTIVE] Posting message to:', targetChannel);
     const response = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${sendToken}`,
       },
       body: JSON.stringify({
         channel: targetChannel,
@@ -140,6 +151,7 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
     });
 
     const result = await response.json();
+    console.log('[SLACK INTERACTIVE] chat.postMessage result:', JSON.stringify({ ok: result.ok, error: result.error, ts: result.ts }));
     
     if (!result.ok) {
       console.error('[SLACK INTERACTIVE] Error sending message:', result.error);

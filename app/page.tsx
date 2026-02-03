@@ -97,6 +97,24 @@ export default function Home() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    try {
+      const response = await fetch(`/api/reminders/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        fetchReminders();
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting reminder:', error);
+      alert('Failed to delete reminder');
+    }
+  };
+
   const handleUpdateDueDate = (reminder: Reminder) => {
     setSelectedReminder(reminder);
     setShowUpdateModal(true);
@@ -311,6 +329,7 @@ export default function Home() {
             onEditDelayMessage={handleEditDelayMessage}
             onEditAutomatedMessages={handleEditAutomatedMessages}
             onEditCompletion={handleEditCompletion}
+            onDelete={handleDelete}
           />
         )}
       </div>
