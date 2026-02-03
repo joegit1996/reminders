@@ -39,9 +39,10 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
     appUrl,
   } = options;
   
-  // Use user token for DMs so messages appear in regular chats, not Apps section
-  const isUserDM = channelId.startsWith('U');
-  const sendToken = (isUserDM && userAccessToken) ? userAccessToken : accessToken;
+  // For now, always use bot token since user token requires reconnection
+  // User token would make messages appear in regular chats instead of Apps section
+  // but requires chat:write user scope which the user may not have yet
+  const sendToken = accessToken;
 
   const statusEmoji = daysRemaining <= 0 ? '🚨' : daysRemaining <= 3 ? '⚠️' : '⏰';
   const statusText = daysRemaining <= 0 
@@ -93,22 +94,12 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
           value: String(reminderId),
           style: 'primary',
         },
-        {
-          type: 'button',
-          text: {
-            type: 'plain_text',
-            text: '🔗 Open App',
-            emoji: true,
-          },
-          action_id: 'open_app',
-          url: appUrl,
-        },
       ],
     },
   ];
 
   try {
-    console.log('[SLACK INTERACTIVE] Sending to channel:', channelId, 'using', isUserDM && userAccessToken ? 'user token' : 'bot token');
+    console.log('[SLACK INTERACTIVE] Sending to channel:', channelId, 'using bot token');
     
     // For user IDs (U...), open a conversation first to get the DM channel
     let targetChannel = channelId;
