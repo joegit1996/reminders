@@ -57,6 +57,7 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
   const isSmallMobile = useMediaQuery('(max-width: 480px)');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [hideCompleted, setHideCompleted] = useState<boolean>(true);
 
   // Get unique channels from reminders
   const uniqueChannels = Array.from(new Set(
@@ -88,10 +89,18 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
     return differenceInDays(due, today);
   };
 
-  // Filter reminders by channel
-  const filteredReminders = channelFilter === 'all' 
-    ? reminders 
-    : reminders.filter(reminder => reminder.slack_channel_id === channelFilter);
+  // Filter reminders by channel and completion status
+  const filteredReminders = reminders.filter(reminder => {
+    // Filter by completion status
+    if (hideCompleted && reminder.is_complete) {
+      return false;
+    }
+    // Filter by channel
+    if (channelFilter !== 'all' && reminder.slack_channel_id !== channelFilter) {
+      return false;
+    }
+    return true;
+  });
 
   // Sort reminders by due date
   const sortedReminders = [...filteredReminders].sort((a, b) => {
@@ -192,6 +201,37 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
               </select>
             </div>
           )}
+
+          {/* Hide Completed Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <label 
+              htmlFor="hideCompleted" 
+              style={{ 
+                fontSize: isMobile ? '0.75rem' : '0.875rem', 
+                fontWeight: '700', 
+                color: '#000000',
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <input
+                type="checkbox"
+                id="hideCompleted"
+                checked={hideCompleted}
+                onChange={(e) => setHideCompleted(e.target.checked)}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  accentColor: neoColors.primary,
+                }}
+              />
+              HIDE COMPLETED
+            </label>
+          </div>
         </div>
       </div>
       
