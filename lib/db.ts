@@ -60,6 +60,7 @@ export interface SlackConnection {
   team_id: string;
   team_name: string | null;
   access_token: string;
+  user_access_token: string | null;  // User token for reading conversations
   bot_user_id: string | null;
   default_channel_id: string | null;
   default_channel_name: string | null;
@@ -558,17 +559,25 @@ export async function upsertSlackConnection(
   teamId: string,
   teamName: string | null,
   accessToken: string,
-  botUserId: string | null
+  botUserId: string | null,
+  userAccessToken: string | null = null
 ): Promise<SlackConnection> {
+  const upsertData: Record<string, unknown> = {
+    user_id: userId,
+    team_id: teamId,
+    team_name: teamName,
+    access_token: accessToken,
+    bot_user_id: botUserId,
+  };
+  
+  // Only include user_access_token if provided
+  if (userAccessToken) {
+    upsertData.user_access_token = userAccessToken;
+  }
+  
   const { data, error } = await supabase
     .from('slack_connections')
-    .upsert({
-      user_id: userId,
-      team_id: teamId,
-      team_name: teamName,
-      access_token: accessToken,
-      bot_user_id: botUserId,
-    }, {
+    .upsert(upsertData, {
       onConflict: 'user_id',
     })
     .select()

@@ -41,20 +41,28 @@ export async function GET(request: NextRequest) {
     });
 
     const tokenData = await tokenResponse.json();
+    
+    console.log('[SLACK CALLBACK] Token response keys:', Object.keys(tokenData));
+    console.log('[SLACK CALLBACK] Has authed_user:', !!tokenData.authed_user);
 
     if (!tokenData.ok) {
       console.error('[SLACK CALLBACK] Token exchange failed:', tokenData.error);
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/settings?slack_error=${tokenData.error}`);
     }
 
-    // Store Slack connection
+    // Get user token if available (from user_scope)
+    const userAccessToken = tokenData.authed_user?.access_token || null;
+    console.log('[SLACK CALLBACK] User access token available:', !!userAccessToken);
+
+    // Store Slack connection with both bot and user tokens
     await upsertSlackConnection(
       supabase,
       user.id,
       tokenData.team.id,
       tokenData.team.name,
-      tokenData.access_token,
-      tokenData.bot_user_id || null
+      tokenData.access_token,  // bot token for sending messages
+      tokenData.bot_user_id || null,
+      userAccessToken  // user token for reading conversations
     );
 
     console.log('[SLACK CALLBACK] Successfully connected Slack workspace:', tokenData.team.name);

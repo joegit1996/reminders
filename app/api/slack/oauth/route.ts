@@ -21,14 +21,18 @@ export async function GET() {
 
     const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/slack/oauth-callback`;
     
-    // Bot scopes for sending messages and reading channels, DMs, and users
-    // im:write and mpim:write needed to open DM conversations before sending
-    const scopes = 'chat:write,channels:read,groups:read,im:read,im:write,mpim:read,mpim:write,users:read';
+    // Bot scopes for sending messages
+    const botScopes = 'chat:write,channels:read,groups:read,users:read';
+    
+    // User scopes for reading the user's own conversations (DMs, MPIMs, private channels)
+    // User tokens can see all conversations the user is part of
+    const userScopes = 'channels:read,groups:read,im:read,mpim:read';
     
     // Build Slack OAuth URL
     const slackOAuthUrl = new URL('https://slack.com/oauth/v2/authorize');
     slackOAuthUrl.searchParams.set('client_id', clientId);
-    slackOAuthUrl.searchParams.set('scope', scopes);
+    slackOAuthUrl.searchParams.set('scope', botScopes);
+    slackOAuthUrl.searchParams.set('user_scope', userScopes);
     slackOAuthUrl.searchParams.set('redirect_uri', redirectUri);
     
     return NextResponse.redirect(slackOAuthUrl.toString());

@@ -39,8 +39,13 @@ export async function GET() {
     }
 
     const conversations: ConversationItem[] = [];
+    
+    // Use user token for reading conversations if available, otherwise fall back to bot token
+    const readToken = connection.user_access_token || connection.access_token;
+    const hasUserToken = !!connection.user_access_token;
+    console.log('[SLACK CHANNELS] Using user token:', hasUserToken);
 
-    // Fetch public channels
+    // Fetch public channels (bot token is fine for this)
     const publicChannelsResponse = await fetch(
       'https://slack.com/api/conversations.list?types=public_channel&limit=500&exclude_archived=true',
       {
@@ -63,12 +68,12 @@ export async function GET() {
       }
     }
 
-    // Fetch private channels
+    // Fetch private channels (use user token to see user's private channels)
     const privateChannelsResponse = await fetch(
       'https://slack.com/api/conversations.list?types=private_channel&limit=500&exclude_archived=true',
       {
         headers: {
-          Authorization: `Bearer ${connection.access_token}`,
+          Authorization: `Bearer ${readToken}`,
         },
       }
     );
@@ -86,12 +91,12 @@ export async function GET() {
       }
     }
 
-    // Fetch DMs (im = direct messages with single users)
+    // Fetch DMs (use user token to see user's DMs)
     const dmsResponse = await fetch(
       'https://slack.com/api/conversations.list?types=im&limit=500',
       {
         headers: {
-          Authorization: `Bearer ${connection.access_token}`,
+          Authorization: `Bearer ${readToken}`,
         },
       }
     );
@@ -100,12 +105,12 @@ export async function GET() {
       console.log('[SLACK CHANNELS] DMs fetch failed:', dmsData.error);
     }
 
-    // Fetch group DMs (mpim = multi-person instant messages)
+    // Fetch group DMs (use user token to see user's MPIMs)
     const groupDmsResponse = await fetch(
       'https://slack.com/api/conversations.list?types=mpim&limit=500',
       {
         headers: {
-          Authorization: `Bearer ${connection.access_token}`,
+          Authorization: `Bearer ${readToken}`,
         },
       }
     );
