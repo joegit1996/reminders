@@ -501,7 +501,7 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                       e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
                     }}
                   >
-                    {isMobile ? '🗑️' : '🗑️ DELETE'}
+                    DELETE
                   </button>
                 )}
               </div>
