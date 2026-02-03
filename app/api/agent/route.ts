@@ -362,22 +362,28 @@ async function executeFunction(
         return { error: 'Slack not connected. Please connect Slack in Settings first.' };
       }
       
-      // Use the same logic as /api/slack/channels
+      // Use bot token for users.list (more reliable), user token for conversations
+      const botToken = slackConn.access_token;
       const readToken = slackConn.user_access_token || slackConn.access_token;
       
-      // Fetch users first
-      const usersResp = await fetch('https://slack.com/api/users.list?limit=200', {
-        headers: { Authorization: `Bearer ${readToken}` },
+      // Fetch users first using bot token (has users:read scope)
+      const usersResp = await fetch('https://slack.com/api/users.list?limit=500', {
+        headers: { Authorization: `Bearer ${botToken}` },
       });
       const usersResult = await usersResp.json();
       const userMapForAgent = new Map<string, string>();
       if (usersResult.ok && usersResult.members) {
         for (const u of usersResult.members) {
-          if (!u.deleted && !u.is_bot) {
-            userMapForAgent.set(u.id, u.profile?.display_name || u.profile?.real_name || u.real_name || u.name);
+          // Include all real users (not deleted, not bot, not app)
+          if (!u.deleted && !u.is_bot && u.id !== 'USLACKBOT') {
+            const displayName = u.profile?.display_name || u.profile?.real_name || u.real_name || u.name;
+            if (displayName) {
+              userMapForAgent.set(u.id, displayName);
+            }
           }
         }
       }
+      console.log('[AGENT] Fetched users:', userMapForAgent.size, 'users');
       
       // Fetch channels
       const channelsResp = await fetch('https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=100&exclude_archived=true', {
@@ -405,18 +411,21 @@ async function executeFunction(
       
       if (dmsResult.ok && dmsResult.channels) {
         for (const dm of dmsResult.channels) {
-          const userName = userMapForAgent.get(dm.user) || 'Unknown';
-          channels.push({
-            id: dm.user, // Use user ID for DMs
-            name: `@${userName}`,
-            type: 'dm',
-          });
+          const userName = userMapForAgent.get(dm.user);
+          // Only add DMs where we can resolve the user name
+          if (userName) {
+            channels.push({
+              id: dm.user, // Use user ID for DMs
+              name: `@${userName}`,
+              type: 'dm',
+            });
+          }
         }
       }
       
       return {
         channels,
-        message: `Found ${channels.length} Slack channels/DMs. Available: ${channels.slice(0, 20).map(c => `"${c.name}" (ID: ${c.id})`).join(', ')}${channels.length > 20 ? '...' : ''}`,
+        message: `Found ${channels.length} Slack channels/DMs. Available: ${channels.slice(0, 30).map(c => `"${c.name}" (ID: ${c.id})`).join(', ')}${channels.length > 30 ? '...' : ''}`,
       };
     
     case 'list_webhooks':
