@@ -1,5 +1,7 @@
 import { differenceInDays, format } from 'date-fns';
-import { Reminder } from './db';
+import { Reminder, getSlackConnectionByUserId } from './db';
+import { sendInteractiveReminder } from './slack-interactive';
+import { createServiceClient } from './supabase-server';
 
 export async function sendSlackReminder(reminder: Reminder): Promise<boolean> {
   try {
@@ -9,6 +11,43 @@ export async function sendSlackReminder(reminder: Reminder): Promise<boolean> {
     dueDate.setHours(0, 0, 0, 0);
     
     const daysRemaining = differenceInDays(dueDate, today);
+    
+    // If we have a channel ID, use the Slack API
+    if (reminder.slack_channel_id && reminder.user_id) {
+      const supabase = createServiceClient();
+      const connection = await getSlackConnectionByUserId(supabase, reminder.user_id);
+      
+      if (!connection || !connection.access_token) {
+        console.error('[SLACK] No Slack connection found for user:', reminder.user_id);
+        return false;
+      }
+      
+      const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://reminders-liard.vercel.app';
+      
+      const result = await sendInteractiveReminder({
+        accessToken: connection.access_token,
+        channelId: reminder.slack_channel_id,
+        reminderId: reminder.id,
+        reminderText: reminder.text,
+        reminderDescription: reminder.description,
+        dueDate: format(dueDate, 'MMM dd, yyyy'),
+        daysRemaining,
+        appUrl,
+      });
+      
+      if (!result.ok) {
+        console.error('[SLACK] Failed to send interactive reminder:', result.error);
+        return false;
+      }
+      
+      return true;
+    }
+    
+    // Fallback to webhook if no channel ID (legacy support)
+    if (!reminder.slack_webhook) {
+      console.error('[SLACK] No channel ID or webhook configured for reminder:', reminder.id);
+      return false;
+    }
     
     let messageText = `*${reminder.text}*\n\n`;
     if (reminder.description) {
