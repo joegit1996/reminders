@@ -97,7 +97,7 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
           type: 'button',
           text: {
             type: 'plain_text',
-            text: '📋 Open App',
+            text: '🔗 Use App',
             emoji: true,
           },
           url: 'https://reminders-liard.vercel.app/',
