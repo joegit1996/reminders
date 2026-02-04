@@ -145,7 +145,7 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
       body: JSON.stringify({
         channel: targetChannel,
         blocks,
-        text: `${statusEmoji} Reminder: ${reminderText}`, // Fallback for notifications
+        text: `Followup: ${reminderText}; confirm what you understood you will do`, // Fallback for notifications
       }),
     });
 
