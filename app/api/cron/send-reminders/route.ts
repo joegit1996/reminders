@@ -157,7 +157,8 @@ export async function GET(request: NextRequest) {
               connection.access_token,
               automatedMessage.slack_channel_id,
               automatedMessage.title,
-              automatedMessage.description
+              automatedMessage.description,
+              connection.user_access_token
             );
             success = result.ok;
             method = 'slack_api';

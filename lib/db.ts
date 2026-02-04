@@ -216,7 +216,8 @@ export async function updateReminderDueDate(
           connection.access_token,
           updatedReminder.delay_slack_channel_id,
           updatedReminder.delay_message,
-          newDueDate
+          newDueDate,
+          connection.user_access_token
         );
         delayMessageSent = result.ok;
       }
@@ -299,7 +300,8 @@ export async function markReminderComplete(supabase: SupabaseClient, id: number)
           connection.access_token,
           reminder.completion_slack_channel_id,
           reminder.text,
-          reminder.completion_message
+          reminder.completion_message,
+          connection.user_access_token
         );
         completionSent = result.ok;
       }

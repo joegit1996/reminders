@@ -234,10 +234,14 @@ export async function sendSlackApiMessage(
   accessToken: string,
   channelId: string,
   title: string,
-  description: string
+  description: string,
+  userAccessToken?: string | null
 ): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  // Prefer user token so messages appear in regular chats (not Apps section)
+  const sendToken = userAccessToken || accessToken;
+
   // Resolve channel ID (handles user IDs for DMs)
-  const resolved = await resolveChannelId(accessToken, channelId);
+  const resolved = await resolveChannelId(sendToken, channelId);
   if (!resolved.ok) {
     console.error('[SLACK API MESSAGE] Failed to resolve channel:', resolved.error);
     return { ok: false, error: resolved.error };
@@ -267,7 +271,7 @@ export async function sendSlackApiMessage(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${sendToken}`,
       },
       body: JSON.stringify({
         channel: targetChannel,
@@ -294,10 +298,14 @@ export async function sendDelayNotificationViaApi(
   accessToken: string,
   channelId: string,
   message: string,
-  newDueDate: string
+  newDueDate: string,
+  userAccessToken?: string | null
 ): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  // Prefer user token so messages appear in regular chats (not Apps section)
+  const sendToken = userAccessToken || accessToken;
+
   // Resolve channel ID (handles user IDs for DMs)
-  const resolved = await resolveChannelId(accessToken, channelId);
+  const resolved = await resolveChannelId(sendToken, channelId);
   if (!resolved.ok) {
     console.error('[SLACK DELAY NOTIFICATION] Failed to resolve channel:', resolved.error);
     return { ok: false, error: resolved.error };
@@ -327,7 +335,7 @@ export async function sendDelayNotificationViaApi(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${sendToken}`,
       },
       body: JSON.stringify({
         channel: targetChannel,
@@ -354,10 +362,14 @@ export async function sendCompletionNotificationViaApi(
   accessToken: string,
   channelId: string,
   reminderText: string,
-  completionMessage: { title: string; description: string } | string
+  completionMessage: { title: string; description: string } | string,
+  userAccessToken?: string | null
 ): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  // Prefer user token so messages appear in regular chats (not Apps section)
+  const sendToken = userAccessToken || accessToken;
+
   // Resolve channel ID (handles user IDs for DMs)
-  const resolved = await resolveChannelId(accessToken, channelId);
+  const resolved = await resolveChannelId(sendToken, channelId);
   if (!resolved.ok) {
     console.error('[SLACK COMPLETION NOTIFICATION] Failed to resolve channel:', resolved.error);
     return { ok: false, error: resolved.error };
@@ -390,7 +402,7 @@ export async function sendCompletionNotificationViaApi(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${sendToken}`,
       },
       body: JSON.stringify({
         channel: targetChannel,
