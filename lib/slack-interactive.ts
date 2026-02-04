@@ -253,7 +253,7 @@ export async function sendSlackApiMessage(
       type: 'header',
       text: {
         type: 'plain_text',
-        text: `📢 ${title}`,
+        text: 'Automated Message - Followup',
         emoji: true,
       },
     },
@@ -261,8 +261,22 @@ export async function sendSlackApiMessage(
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: description,
+        text: `*${title}*${description ? `\n\n${description}` : ''}`,
       },
+    },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '🔗 Use App',
+            emoji: true,
+          },
+          url: 'https://reminders-liard.vercel.app/',
+        },
+      ],
     },
   ];
 
@@ -276,7 +290,7 @@ export async function sendSlackApiMessage(
       body: JSON.stringify({
         channel: targetChannel,
         blocks,
-        text: `${title}: ${description}`,
+        text: `Followup: ${title}`,
       }),
     });
 
@@ -317,7 +331,7 @@ export async function sendDelayNotificationViaApi(
       type: 'header',
       text: {
         type: 'plain_text',
-        text: '⏰ Due Date Updated',
+        text: 'Automated Message - Followup',
         emoji: true,
       },
     },
@@ -327,6 +341,20 @@ export async function sendDelayNotificationViaApi(
         type: 'mrkdwn',
         text: `${message}\n\n*New due date:* ${newDueDate}`,
       },
+    },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '🔗 Use App',
+            emoji: true,
+          },
+          url: 'https://reminders-liard.vercel.app/',
+        },
+      ],
     },
   ];
 
@@ -340,7 +368,7 @@ export async function sendDelayNotificationViaApi(
       body: JSON.stringify({
         channel: targetChannel,
         blocks,
-        text: `${message} - New due date: ${newDueDate}`,
+        text: `Followup: ${message}`,
       }),
     });
 
@@ -384,7 +412,7 @@ export async function sendCompletionNotificationViaApi(
       type: 'header',
       text: {
         type: 'plain_text',
-        text: `✅ ${title || 'Reminder Completed'}`,
+        text: 'Automated Message - Followup',
         emoji: true,
       },
     },
@@ -392,8 +420,22 @@ export async function sendCompletionNotificationViaApi(
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*Reminder:* ${reminderText}${description ? `\n\n${description}` : ''}`,
+        text: `*${title || 'Reminder Completed'}*${description ? `\n\n${description}` : ''}`,
       },
+    },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '🔗 Use App',
+            emoji: true,
+          },
+          url: 'https://reminders-liard.vercel.app/',
+        },
+      ],
     },
   ];
 
@@ -407,7 +449,7 @@ export async function sendCompletionNotificationViaApi(
       body: JSON.stringify({
         channel: targetChannel,
         blocks,
-        text: `✅ ${title || 'Reminder Completed'}: ${reminderText}`,
+        text: `Followup: ${title || 'Reminder Completed'}`,
       }),
     });
 
