@@ -48,13 +48,8 @@ export default function SlackMigrationBanner() {
     sessionStorage.setItem('slack_banner_dismissed', 'true');
   };
 
-  // Don't show if loading, dismissed, or Slack is fully connected
-  if (loading || dismissed) {
-    return null;
-  }
-
-  // Show if not connected or if no default channel is set
-  if (status?.connected && status?.default_channel_id) {
+  // Don't show if loading, dismissed, or Slack is connected
+  if (loading || dismissed || status?.connected) {
     return null;
   }
 
@@ -81,7 +76,7 @@ export default function SlackMigrationBanner() {
             textTransform: 'uppercase',
             fontSize: isMobile ? '1rem' : '1.1rem',
           }}>
-            {status?.connected ? 'SELECT A DEFAULT CHANNEL' : 'CONNECT SLACK FOR BETTER EXPERIENCE'}
+            CONNECT SLACK FOR BETTER EXPERIENCE
           </h3>
         </div>
         <p style={{ 
@@ -89,10 +84,7 @@ export default function SlackMigrationBanner() {
           fontSize: isMobile ? '0.875rem' : '0.9rem',
           opacity: 0.9,
         }}>
-          {status?.connected 
-            ? 'Set a default channel to receive interactive reminders with one-click completion!'
-            : 'Connect your Slack workspace to receive interactive reminders you can complete with a single click!'
-          }
+          Connect your Slack workspace to receive interactive reminders you can complete with a single click!
         </p>
       </div>
 
@@ -119,7 +111,7 @@ export default function SlackMigrationBanner() {
             e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
           }}
         >
-          {status?.connected ? 'SELECT CHANNEL' : 'CONNECT SLACK'}
+          CONNECT SLACK
         </Link>
         <button
           onClick={handleDismiss}
