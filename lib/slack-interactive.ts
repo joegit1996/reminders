@@ -236,6 +236,14 @@ export async function sendSlackApiMessage(
   title: string,
   description: string
 ): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  // Resolve channel ID (handles user IDs for DMs)
+  const resolved = await resolveChannelId(accessToken, channelId);
+  if (!resolved.ok) {
+    console.error('[SLACK API MESSAGE] Failed to resolve channel:', resolved.error);
+    return { ok: false, error: resolved.error };
+  }
+  const targetChannel = resolved.channelId;
+
   const blocks: SlackBlock[] = [
     {
       type: 'header',
@@ -262,14 +270,14 @@ export async function sendSlackApiMessage(
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        channel: channelId,
+        channel: targetChannel,
         blocks,
         text: `${title}: ${description}`,
       }),
     });
 
     const result = await response.json();
-    
+
     if (!result.ok) {
       console.error('[SLACK API MESSAGE] Error sending message:', result.error);
     }
@@ -288,6 +296,14 @@ export async function sendDelayNotificationViaApi(
   message: string,
   newDueDate: string
 ): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  // Resolve channel ID (handles user IDs for DMs)
+  const resolved = await resolveChannelId(accessToken, channelId);
+  if (!resolved.ok) {
+    console.error('[SLACK DELAY NOTIFICATION] Failed to resolve channel:', resolved.error);
+    return { ok: false, error: resolved.error };
+  }
+  const targetChannel = resolved.channelId;
+
   const blocks: SlackBlock[] = [
     {
       type: 'header',
@@ -314,14 +330,14 @@ export async function sendDelayNotificationViaApi(
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        channel: channelId,
+        channel: targetChannel,
         blocks,
         text: `${message} - New due date: ${newDueDate}`,
       }),
     });
 
     const result = await response.json();
-    
+
     if (!result.ok) {
       console.error('[SLACK DELAY NOTIFICATION] Error sending message:', result.error);
     }
@@ -340,6 +356,14 @@ export async function sendCompletionNotificationViaApi(
   reminderText: string,
   completionMessage: { title: string; description: string } | string
 ): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  // Resolve channel ID (handles user IDs for DMs)
+  const resolved = await resolveChannelId(accessToken, channelId);
+  if (!resolved.ok) {
+    console.error('[SLACK COMPLETION NOTIFICATION] Failed to resolve channel:', resolved.error);
+    return { ok: false, error: resolved.error };
+  }
+  const targetChannel = resolved.channelId;
+
   const title = typeof completionMessage === 'string' ? completionMessage : completionMessage.title;
   const description = typeof completionMessage === 'string' ? '' : completionMessage.description;
 
@@ -369,14 +393,14 @@ export async function sendCompletionNotificationViaApi(
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        channel: channelId,
+        channel: targetChannel,
         blocks,
         text: `✅ ${title || 'Reminder Completed'}: ${reminderText}`,
       }),
     });
 
     const result = await response.json();
-    
+
     if (!result.ok) {
       console.error('[SLACK COMPLETION NOTIFICATION] Error sending message:', result.error);
     }
@@ -385,6 +409,38 @@ export async function sendCompletionNotificationViaApi(
   } catch (error) {
     console.error('[SLACK COMPLETION NOTIFICATION] Error sending message:', error);
     return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Helper to resolve channel ID - opens DM if channel is a user ID
+async function resolveChannelId(
+  accessToken: string,
+  channelId: string
+): Promise<{ ok: boolean; channelId: string; error?: string }> {
+  if (!channelId.startsWith('U')) {
+    return { ok: true, channelId };
+  }
+
+  // For user IDs, open a conversation first to get the DM channel
+  try {
+    const openResponse = await fetch('https://slack.com/api/conversations.open', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        users: channelId,
+      }),
+    });
+    const openResult = await openResponse.json();
+
+    if (openResult.ok && openResult.channel?.id) {
+      return { ok: true, channelId: openResult.channel.id };
+    }
+    return { ok: false, channelId, error: openResult.error || 'Failed to open DM conversation' };
+  } catch (error) {
+    return { ok: false, channelId, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
