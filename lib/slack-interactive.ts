@@ -38,10 +38,10 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
     daysRemaining,
     appUrl,
   } = options;
-  
-  // Use user token for DMs so messages appear in regular chats, not Apps section
-  const isUserDM = channelId.startsWith('U');
-  const sendToken = (isUserDM && userAccessToken) ? userAccessToken : accessToken;
+
+  // Prefer user token so messages appear in regular chats (not Apps section)
+  // Messages sent with user token show as coming from the user, not the app
+  const sendToken = userAccessToken || accessToken;
 
   const statusEmoji = daysRemaining <= 0 ? '🚨' : daysRemaining <= 3 ? '⚠️' : '⏰';
   const statusText = daysRemaining <= 0 
@@ -107,7 +107,7 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
   ];
 
   try {
-    console.log('[SLACK INTERACTIVE] Sending to channel:', channelId, 'using', isUserDM && userAccessToken ? 'user token' : 'bot token');
+    console.log('[SLACK INTERACTIVE] Sending to channel:', channelId, 'using', userAccessToken ? 'user token' : 'bot token');
     
     // For user IDs (U...), open a conversation first to get the DM channel
     let targetChannel = channelId;
@@ -151,9 +151,35 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
 
     const result = await response.json();
     console.log('[SLACK INTERACTIVE] chat.postMessage result:', JSON.stringify({ ok: result.ok, error: result.error, ts: result.ts }));
-    
+
     if (!result.ok) {
       console.error('[SLACK INTERACTIVE] Error sending message:', result.error);
+
+      // If user token failed, retry with bot token for channels where bot is a member
+      if ((result.error === 'channel_not_found' || result.error === 'not_in_channel') &&
+          sendToken === userAccessToken && accessToken !== userAccessToken) {
+        console.log('[SLACK INTERACTIVE] Retrying with bot token');
+        const retryResponse = await fetch('https://slack.com/api/chat.postMessage', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            channel: targetChannel,
+            blocks,
+            text: `Followup: ${reminderText}; confirm what you understood you will do`,
+          }),
+        });
+
+        const retryResult = await retryResponse.json();
+        console.log('[SLACK INTERACTIVE] Retry with bot token result:', JSON.stringify({ ok: retryResult.ok, error: retryResult.error, ts: retryResult.ts }));
+
+        if (retryResult.ok) {
+          return retryResult;
+        }
+        console.error('[SLACK INTERACTIVE] Retry with bot token also failed:', retryResult.error);
+      }
     }
 
     return result;

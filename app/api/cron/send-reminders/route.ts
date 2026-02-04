@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
 
           const result = await sendInteractiveReminder({
             accessToken: connection.access_token,
+            userAccessToken: connection.user_access_token,
             channelId,
             reminderId: reminder.id,
             reminderText: reminder.text,
