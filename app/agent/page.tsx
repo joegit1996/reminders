@@ -105,33 +105,6 @@ export default function AgentPage() {
             >
               📅 CALENDAR
             </Link>
-            <Link
-              href="/webhooks"
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: '#FF6B6B',
-                color: '#000000',
-                textDecoration: 'none',
-                borderRadius: '0',
-                border: '3px solid #000000',
-                fontWeight: '700',
-                fontSize: '0.9rem',
-                whiteSpace: 'nowrap',
-                textAlign: 'center',
-                boxShadow: '4px 4px 0px 0px #000000',
-                transition: 'all 0.1s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translate(2px, 2px)';
-                e.currentTarget.style.boxShadow = '2px 2px 0px 0px #000000';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translate(0, 0)';
-                e.currentTarget.style.boxShadow = '4px 4px 0px 0px #000000';
-              }}
-            >
-              🔗 WEBHOOKS
-            </Link>
           </div>
         </div>
         <AgentChat onReminderUpdated={handleReminderUpdated} />
