@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { neoStyles, buttonVariants } from '@/lib/neoBrutalismStyles';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import ChannelSelector from './ChannelSelector';
 
 interface ActionFormFieldsProps {
   action: {
@@ -15,14 +16,6 @@ interface ActionFormFieldsProps {
   onArgsChange: (args: any) => void;
 }
 
-interface SlackChannel {
-  id: string;
-  name: string;
-  type: 'channel' | 'private_channel' | 'dm' | 'group_dm';
-  is_private: boolean;
-  is_member: boolean;
-}
-
 interface Reminder {
   id: number;
   text: string;
@@ -31,7 +24,6 @@ interface Reminder {
 export default function ActionFormFields({ action, onArgsChange }: ActionFormFieldsProps) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [localArgs, setLocalArgs] = useState(action.args || {});
-  const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
 
   useEffect(() => {
@@ -39,16 +31,6 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
   }, [localArgs, onArgsChange]);
 
   useEffect(() => {
-    // Fetch Slack channels for channel selection dropdowns
-    fetch('/api/slack/channels')
-      .then(res => res.json())
-      .then(data => {
-        if (data.conversations && Array.isArray(data.conversations)) {
-          setSlackChannels(data.conversations);
-        }
-      })
-      .catch(err => console.error('Failed to fetch Slack channels:', err));
-
     // Fetch reminders to show names instead of IDs
     fetch('/api/reminders')
       .then(res => res.json())
@@ -59,31 +41,6 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
       })
       .catch(err => console.error('Failed to fetch reminders:', err));
   }, []);
-
-  const getChannelLabel = (channel: SlackChannel): string => {
-    switch (channel.type) {
-      case 'channel':
-        return `# ${channel.name}`;
-      case 'private_channel':
-        return `🔒 ${channel.name}`;
-      case 'dm':
-        return `@ ${channel.name}`;
-      case 'group_dm':
-        return `👥 ${channel.name}`;
-      default:
-        return channel.name;
-    }
-  };
-
-  const getChannelGroupLabel = (type: string): string => {
-    switch (type) {
-      case 'channel': return 'Channels';
-      case 'private_channel': return 'Private Channels';
-      case 'dm': return 'Direct Messages';
-      case 'group_dm': return 'Group DMs';
-      default: return 'Other';
-    }
-  };
 
   // Check if a field key represents a Slack channel ID field
   const isSlackChannelIdField = (key: string): boolean => {
@@ -106,6 +63,15 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
     const lower = key.toLowerCase();
     return (lower.includes('slack') && lower.includes('channel') && lower.includes('name')) ||
            lower === 'slack_channel_name';
+  };
+
+  // Get a friendly label for a channel ID field
+  const getChannelFieldLabel = (key: string): string => {
+    if (key === 'slackChannelId') return 'Slack Channel';
+    if (key === 'delaySlackChannelId') return 'Delay Slack Channel';
+    if (key === 'completionSlackChannelId') return 'Completion Slack Channel';
+    if (key === 'slack_channel_id') return 'Slack Channel';
+    return key;
   };
 
   const renderField = (key: string, schema: any, value: any, path: string = '') => {
@@ -240,7 +206,7 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
 
     const inputType = fieldType === 'number' ? 'number' : fieldType === 'date' || key.toLowerCase().includes('date') ? 'date' : 'text';
 
-    // Check if this is a Slack channel ID field - show channel dropdown
+    // Check if this is a Slack channel ID field - use ChannelSelector
     const isChannelId = isSlackChannelIdField(key);
 
     // Skip rendering channel name fields - they're auto-filled when channel ID is selected
@@ -254,10 +220,12 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
 
     return (
       <div key={key} style={{ marginBottom: '1rem' }}>
-        <label style={{ display: 'block', fontWeight: '700', marginBottom: '0.5rem', fontSize: isMobile ? '0.875rem' : '1rem' }}>
-          {isChannelId ? key.replace(/Id$/, '').replace(/slack_channel_id/, 'Slack Channel').replace(/SlackChannel/, 'Slack Channel ') : key} {isRequired && <span style={{ color: '#FF6B6B' }}>*</span>}
-          {fieldDescription && <span style={{ fontSize: '0.75rem', color: '#666', fontWeight: '400', display: 'block', marginTop: '0.25rem' }}>{fieldDescription}</span>}
-        </label>
+        {!isChannelId && (
+          <label style={{ display: 'block', fontWeight: '700', marginBottom: '0.5rem', fontSize: isMobile ? '0.875rem' : '1rem' }}>
+            {key} {isRequired && <span style={{ color: '#FF6B6B' }}>*</span>}
+            {fieldDescription && <span style={{ fontSize: '0.75rem', color: '#666', fontWeight: '400', display: 'block', marginTop: '0.25rem' }}>{fieldDescription}</span>}
+          </label>
+        )}
         {fieldSchema.enum ? (
           <select
             value={value || ''}
@@ -321,12 +289,11 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
             )}
           </select>
         ) : isChannelId ? (
-          <select
-            value={value || ''}
-            onChange={(e) => {
-              const selectedChannel = slackChannels.find(c => c.id === e.target.value);
+          <ChannelSelector
+            value={value || null}
+            valueName={localArgs[getNameFieldKey(key) || ''] || null}
+            onChange={(channelId, channelName) => {
               const newArgs = { ...localArgs };
-              const newValue = e.target.value;
               const nameKey = getNameFieldKey(key);
 
               if (path) {
@@ -335,44 +302,20 @@ export default function ActionFormFields({ action, onArgsChange }: ActionFormFie
                 for (let i = 0; i < pathParts.length - 1; i++) {
                   current = current[pathParts[i]] = current[pathParts[i]] || {};
                 }
-                current[pathParts[pathParts.length - 1]] = newValue;
-                // Auto-fill the name field
+                current[pathParts[pathParts.length - 1]] = channelId || '';
                 if (nameKey) {
-                  current[nameKey.split('.').pop() || nameKey] = selectedChannel?.name || '';
+                  current[nameKey.split('.').pop() || nameKey] = channelName || '';
                 }
               } else {
-                newArgs[key] = newValue;
-                // Auto-fill the corresponding name field
+                newArgs[key] = channelId || '';
                 if (nameKey) {
-                  newArgs[nameKey] = selectedChannel?.name || '';
+                  newArgs[nameKey] = channelName || '';
                 }
               }
               setLocalArgs(newArgs);
             }}
-            style={{
-              ...neoStyles.input,
-              width: '100%',
-              fontSize: isMobile ? '0.875rem' : '1rem',
-            }}
-          >
-            <option value="">Select channel or DM...</option>
-            {['channel', 'private_channel', 'dm', 'group_dm'].map(type => {
-              const channels = slackChannels.filter(c => c.type === type);
-              if (channels.length === 0) return null;
-              return (
-                <optgroup key={type} label={getChannelGroupLabel(type)}>
-                  {channels.map((channel) => (
-                    <option key={channel.id} value={channel.id}>
-                      {getChannelLabel(channel)}
-                    </option>
-                  ))}
-                </optgroup>
-              );
-            })}
-            {value && !slackChannels.find(c => c.id === value) && (
-              <option value={value}>{value}</option>
-            )}
-          </select>
+            label={`${getChannelFieldLabel(key)}${isRequired ? ' *' : ''}`}
+          />
         ) : inputType === 'text' && (key.toLowerCase().includes('message') || key.toLowerCase().includes('description') || key.toLowerCase().includes('text')) ? (
           <textarea
             value={value || ''}
