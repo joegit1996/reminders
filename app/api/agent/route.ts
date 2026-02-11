@@ -99,7 +99,7 @@ const functionDefinitions = [
   },
   {
     name: 'update_delay_config',
-    description: 'Update delay message and webhooks for a reminder',
+    description: 'Update delay message and Slack channel for a reminder. Call list_slack_channels first to get available channels.',
     parameters: {
       type: 'object',
       properties: {
@@ -111,10 +111,13 @@ const functionDefinitions = [
           type: 'string',
           description: 'Message sent when due date is updated (will include new due date automatically)',
         },
-        delayWebhooks: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Array of webhook URLs for delay messages',
+        delaySlackChannelId: {
+          type: 'string',
+          description: 'Slack channel ID for delay messages (from list_slack_channels)',
+        },
+        delaySlackChannelName: {
+          type: 'string',
+          description: 'Display name of the Slack channel for delay messages',
         },
       },
       required: ['id'],
@@ -122,7 +125,7 @@ const functionDefinitions = [
   },
   {
     name: 'update_automated_messages',
-    description: 'Update automated messages for a reminder',
+    description: 'Update automated messages for a reminder. Call list_slack_channels first to get available channels.',
     parameters: {
       type: 'object',
       properties: {
@@ -138,9 +141,10 @@ const functionDefinitions = [
               days_before: { type: 'number', description: 'Days before due date to send' },
               title: { type: 'string', description: 'Message title' },
               description: { type: 'string', description: 'Message description' },
-              webhook_url: { type: 'string', description: 'Webhook URL to send to' },
+              slack_channel_id: { type: 'string', description: 'Slack channel ID to send to (from list_slack_channels)' },
+              slack_channel_name: { type: 'string', description: 'Display name of the channel' },
             },
-            required: ['days_before', 'title', 'description', 'webhook_url'],
+            required: ['days_before', 'title', 'description', 'slack_channel_id'],
           },
           description: 'Array of automated messages to send before due date',
         },
@@ -217,16 +221,8 @@ const functionDefinitions = [
     },
   },
   {
-    name: 'list_webhooks',
-    description: 'LEGACY: Get all saved webhooks with their names (for old reminders only)',
-    parameters: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
     name: 'search_reminders',
-    description: 'Search reminders by text or filter by webhook name',
+    description: 'Search reminders by text or filter by Slack channel name',
     parameters: {
       type: 'object',
       properties: {
@@ -234,9 +230,9 @@ const functionDefinitions = [
           type: 'string',
           description: 'Search query to find reminders by text',
         },
-        webhookName: {
+        slackChannelName: {
           type: 'string',
-          description: 'Filter by webhook name',
+          description: 'Filter by Slack channel name',
         },
       },
     },
@@ -455,12 +451,10 @@ async function executeFunction(
         );
       }
       
-      if (args.webhookName) {
-        const webhooksForSearch = await getAllSavedWebhooks(supabase);
-        const webhook = webhooksForSearch.find((w: any) => w.name.toLowerCase().includes(args.webhookName.toLowerCase()));
-        if (webhook) {
-          filtered = filtered.filter(r => r.slack_webhook === webhook.webhook_url);
-        }
+      if (args.slackChannelName) {
+        filtered = filtered.filter(r =>
+          r.slack_channel_name && r.slack_channel_name.toLowerCase().includes(args.slackChannelName.toLowerCase())
+        );
       }
       
       return { reminders: filtered };
@@ -488,7 +482,8 @@ async function executeFunction(
         .from('reminders')
         .update({
           delay_message: args.delayMessage || null,
-          delay_webhooks: args.delayWebhooks || [],
+          delay_slack_channel_id: args.delaySlackChannelId || null,
+          delay_slack_channel_name: args.delaySlackChannelName || null,
         })
         .eq('id', args.id)
         .select()
@@ -504,7 +499,8 @@ async function executeFunction(
         days_before: msg.days_before,
         title: msg.title,
         description: msg.description,
-        webhook_url: msg.webhook_url,
+        slack_channel_id: msg.slack_channel_id,
+        slack_channel_name: msg.slack_channel_name || null,
         sent: msg.sent || false,
         sent_at: msg.sent_at || null,
       }));
@@ -764,7 +760,7 @@ User: "create reminder for youssef about X due tomorrow"
 
       // Check if the model wants to call a function
       if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-        const readOnlyOperations = ['list_reminders', 'get_reminder', 'search_reminders', 'list_webhooks', 'list_slack_channels'];
+        const readOnlyOperations = ['list_reminders', 'get_reminder', 'search_reminders', 'list_slack_channels'];
         
         const allToolCalls = responseMessage.tool_calls.filter((tc: any) => tc.type === 'function');
         console.log('[AGENT] Total tool calls:', allToolCalls.length);
