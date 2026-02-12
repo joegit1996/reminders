@@ -37,29 +37,35 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { 
-      text, 
-      description, 
-      dueDate, 
-      periodDays, 
-      slackWebhook, 
+    const {
+      text,
+      description,
+      dueDate,
+      periodDays,
+      scheduleType: rawScheduleType,
+      scheduleConfig: rawScheduleConfig,
+      slackWebhook,
       slackChannelId,
       slackChannelName,
-      delayMessage, 
+      delayMessage,
       delayWebhooks,
       delaySlackChannelId,
       delaySlackChannelName,
-      automatedMessages, 
-      completionMessage, 
+      automatedMessages,
+      completionMessage,
       completionWebhook,
       completionSlackChannelId,
       completionSlackChannelName,
     } = body;
 
-    // Validation - either webhook or channel is required
-    if (!text || !dueDate || !periodDays) {
+    // Derive schedule type and config (backward compat: if only periodDays sent, convert)
+    const scheduleType = rawScheduleType || 'period_days';
+    const scheduleConfig = rawScheduleConfig || { period_days: periodDays || 1 };
+
+    // Validation
+    if (!text || !dueDate) {
       return NextResponse.json(
-        { error: 'Missing required fields (text, dueDate, periodDays)' },
+        { error: 'Missing required fields (text, dueDate)' },
         { status: 400 }
       );
     }
@@ -72,12 +78,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (periodDays < 1) {
+    // Validate schedule type and config
+    const validScheduleTypes = ['period_days', 'days_of_week', 'days_of_month'];
+    if (!validScheduleTypes.includes(scheduleType)) {
       return NextResponse.json(
-        { error: 'Period days must be at least 1' },
+        { error: `Invalid schedule type. Must be one of: ${validScheduleTypes.join(', ')}` },
         { status: 400 }
       );
     }
+
+    if (scheduleType === 'period_days') {
+      const pd = scheduleConfig.period_days;
+      if (!pd || typeof pd !== 'number' || pd < 1) {
+        return NextResponse.json(
+          { error: 'period_days must be at least 1' },
+          { status: 400 }
+        );
+      }
+    } else if (scheduleType === 'days_of_week') {
+      const days = scheduleConfig.days;
+      if (!Array.isArray(days) || days.length === 0 || !days.every((d: unknown) => typeof d === 'number' && d >= 0 && d <= 6)) {
+        return NextResponse.json(
+          { error: 'days_of_week requires a non-empty array of integers 0-6' },
+          { status: 400 }
+        );
+      }
+    } else if (scheduleType === 'days_of_month') {
+      const days = scheduleConfig.days;
+      if (!Array.isArray(days) || days.length === 0 || !days.every((d: unknown) => typeof d === 'number' && d >= 1 && d <= 31)) {
+        return NextResponse.json(
+          { error: 'days_of_month requires a non-empty array of integers 1-31' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Use periodDays from config for backward compat column
+    const effectivePeriodDays = scheduleType === 'period_days' ? (scheduleConfig.period_days as number) : 1;
 
     // Validate webhook URL format if provided
     if (slackWebhook && !slackWebhook.startsWith('https://hooks.slack.com/')) {
@@ -159,7 +196,7 @@ export async function POST(request: NextRequest) {
         user.id,
         text,
         dueDate,
-        periodDays,
+        effectivePeriodDays,
         slackWebhook || '',
         description || null,
         delayMessage || null,
@@ -172,7 +209,9 @@ export async function POST(request: NextRequest) {
         delaySlackChannelId || null,
         delaySlackChannelName || null,
         completionSlackChannelId || null,
-        completionSlackChannelName || null
+        completionSlackChannelName || null,
+        scheduleType,
+        scheduleConfig
       );
     } catch (dbError) {
       console.error('[REMINDERS API] Database error creating reminder:', dbError);

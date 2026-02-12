@@ -165,10 +165,10 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
 
           {/* Filter Control */}
           {uniqueChannels.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <label htmlFor="channelFilter" style={{ 
-                fontSize: isMobile ? '0.75rem' : '0.875rem', 
-                fontWeight: '700', 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+              <label htmlFor="channelFilter" style={{
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                fontWeight: '700',
                 color: '#000000',
                 whiteSpace: 'nowrap',
               }}>
@@ -183,7 +183,8 @@ export default function ReminderList({ reminders, onComplete, onUpdateDueDate, o
                   padding: '0.5rem 0.75rem',
                   fontSize: isMobile ? '0.75rem' : '0.875rem',
                   cursor: 'pointer',
-                  minWidth: '150px',
+                  minWidth: 0,
+                  maxWidth: isMobile ? '100%' : '200px',
                 }}
                 onFocus={(e) => {
                   e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;

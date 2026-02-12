@@ -31,7 +31,9 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
     text: '',
     description: '',
     dueDate: getTodayDate(),
+    scheduleType: 'period_days' as 'period_days' | 'days_of_week' | 'days_of_month',
     periodDays: '1',
+    selectedDays: [] as number[],
     slackWebhook: '',
     slackChannelId: null as string | null,
     slackChannelName: null as string | null,
@@ -145,7 +147,10 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
           text: formData.text,
           description: formData.description || null,
           dueDate: formData.dueDate,
-          periodDays: parseInt(formData.periodDays),
+          scheduleType: formData.scheduleType,
+          scheduleConfig: formData.scheduleType === 'period_days'
+            ? { period_days: parseInt(formData.periodDays) }
+            : { days: formData.selectedDays },
           slackWebhook: formData.slackWebhook,
           slackChannelId: formData.slackChannelId,
           slackChannelName: formData.slackChannelName,
@@ -174,7 +179,9 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
         text: '',
         description: '',
         dueDate: getTodayDate(),
+        scheduleType: 'period_days',
         periodDays: '1',
+        selectedDays: [],
         slackWebhook: '',
         slackChannelId: null,
         slackChannelName: null,
@@ -290,28 +297,141 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
       </div>
 
       <div>
-        <label htmlFor="periodDays" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
-          PERIOD (DAYS BETWEEN REMINDERS) *
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#000000' }}>
+          SCHEDULE *
         </label>
-        <input
-          type="number"
-          id="periodDays"
-          value={formData.periodDays}
-          onChange={(e) => setFormData({ ...formData, periodDays: e.target.value })}
-          required
-          min="1"
-          placeholder="e.g., 3"
-          style={{
-            ...neoStyles.input,
-            width: '100%',
-          }}
-          onFocus={(e) => {
-            e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
-          }}
-          onBlur={(e) => {
-            e.target.style.boxShadow = 'none';
-          }}
-        />
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          {([
+            { value: 'period_days', label: 'EVERY N DAYS' },
+            { value: 'days_of_week', label: 'DAYS OF WEEK' },
+            { value: 'days_of_month', label: 'DAY OF MONTH' },
+          ] as const).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setFormData({ ...formData, scheduleType: option.value, selectedDays: [] })}
+              style={{
+                ...neoStyles.button,
+                ...(formData.scheduleType === option.value ? buttonVariants.primary : buttonVariants.neutral),
+                padding: '0.5rem 0.75rem',
+                fontSize: '0.75rem',
+                flex: 1,
+              }}
+              onMouseEnter={(e) => {
+                Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0, 0)';
+                e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {formData.scheduleType === 'period_days' && (
+          <input
+            type="number"
+            id="periodDays"
+            value={formData.periodDays}
+            onChange={(e) => setFormData({ ...formData, periodDays: e.target.value })}
+            required
+            min="1"
+            placeholder="e.g., 3"
+            style={{
+              ...neoStyles.input,
+              width: '100%',
+            }}
+            onFocus={(e) => {
+              e.target.style.boxShadow = neoStyles.inputFocus.boxShadow;
+            }}
+            onBlur={(e) => {
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+        )}
+
+        {formData.scheduleType === 'days_of_week' && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const).map((day, index) => {
+              const isSelected = formData.selectedDays.includes(index);
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => {
+                    const days = isSelected
+                      ? formData.selectedDays.filter((d) => d !== index)
+                      : [...formData.selectedDays, index];
+                    setFormData({ ...formData, selectedDays: days });
+                  }}
+                  style={{
+                    ...neoStyles.button,
+                    ...(isSelected ? buttonVariants.primary : buttonVariants.neutral),
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.8rem',
+                    minWidth: isMobile ? 'calc(25% - 0.375rem)' : 'auto',
+                    flex: isMobile ? '0 0 calc(25% - 0.375rem)' : 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translate(0, 0)';
+                    e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                  }}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {formData.scheduleType === 'days_of_month' && (
+          <>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(5, 1fr)' : 'repeat(7, 1fr)',
+              gap: '0.375rem',
+            }}>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
+                const isSelected = formData.selectedDays.includes(day);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => {
+                      const days = isSelected
+                        ? formData.selectedDays.filter((d) => d !== day)
+                        : [...formData.selectedDays, day];
+                      setFormData({ ...formData, selectedDays: days });
+                    }}
+                    style={{
+                      ...neoStyles.button,
+                      ...(isSelected ? buttonVariants.primary : buttonVariants.neutral),
+                      padding: '0.4rem',
+                      fontSize: '0.8rem',
+                    }}
+                    onMouseEnter={(e) => {
+                      Object.assign(e.currentTarget.style, neoStyles.buttonHover);
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translate(0, 0)';
+                      e.currentTarget.style.boxShadow = neoStyles.button.boxShadow;
+                    }}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+            <small style={{ color: '#666', fontSize: '0.75rem', display: 'block', marginTop: '0.375rem' }}>
+              Months without a selected day will be skipped.
+            </small>
+          </>
+        )}
       </div>
 
       <div>

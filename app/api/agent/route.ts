@@ -42,9 +42,14 @@ const functionDefinitions = [
           type: 'string',
           description: 'Due date in YYYY-MM-DD format. Calculate from natural language like "tomorrow", "in 3 days", "next Thursday" relative to today.',
         },
-        periodDays: {
-          type: 'number',
-          description: 'Number of days between reminders (minimum 1)',
+        scheduleType: {
+          type: 'string',
+          enum: ['period_days', 'days_of_week', 'days_of_month'],
+          description: 'Schedule type: period_days (every N days), days_of_week (specific weekdays), days_of_month (specific days of month)',
+        },
+        scheduleConfig: {
+          type: 'object',
+          description: 'Schedule config. For period_days: { "period_days": N }. For days_of_week: { "days": [0-6] } (0=Sun). For days_of_month: { "days": [1-31] }.',
         },
         slackChannelId: {
           type: 'string',
@@ -94,7 +99,7 @@ const functionDefinitions = [
           description: 'Optional display name for completion message channel',
         },
       },
-      required: ['text', 'dueDate', 'periodDays', 'slackChannelId', 'slackChannelName'],
+      required: ['text', 'dueDate', 'scheduleType', 'scheduleConfig', 'slackChannelId', 'slackChannelName'],
     },
   },
   {
@@ -275,13 +280,18 @@ async function executeFunction(
         return { error: 'Slack not connected. Please connect Slack in Settings first.' };
       }
       
+      // Derive period_days for backward compat column
+      const scheduleType = args.scheduleType || 'period_days';
+      const scheduleConfig = args.scheduleConfig || { period_days: 1 };
+      const effectivePeriodDays = scheduleType === 'period_days' ? (scheduleConfig.period_days || 1) : 1;
+
       // Create the reminder FIRST
       const reminder = await createReminder(
         supabase,
         userId,
         args.text,
         args.dueDate,
-        args.periodDays,
+        effectivePeriodDays,
         '', // No webhook - using channel
         args.description || null,
         args.delayMessage || null,
@@ -294,7 +304,9 @@ async function executeFunction(
         args.delaySlackChannelId || null,
         args.delaySlackChannelName || null,
         args.completionSlackChannelId || null,
-        args.completionSlackChannelName || null
+        args.completionSlackChannelName || null,
+        scheduleType,
+        scheduleConfig
       );
       
       // Calculate days remaining for the message
@@ -716,6 +728,18 @@ CRITICAL INSTRUCTIONS FOR SLACK CHANNEL SELECTION:
 2. When user says "for [name]" (e.g., "for youssef", "for mina"), match it to a DM with that name (look for @name)
 3. Use the EXACT channel ID and name from list_slack_channels
 4. If no name match is found, ask the user which channel/DM to use
+
+SCHEDULE TYPE INSTRUCTIONS:
+When the user specifies a schedule, map it to the correct type:
+- "every 3 days" or "every day" -> scheduleType: "period_days", scheduleConfig: { "period_days": 3 } (or 1)
+- "every Monday" -> scheduleType: "days_of_week", scheduleConfig: { "days": [1] }
+- "every Monday and Friday" -> scheduleType: "days_of_week", scheduleConfig: { "days": [1, 5] }
+- "every Sunday" -> scheduleType: "days_of_week", scheduleConfig: { "days": [0] }
+- "every weekday" -> scheduleType: "days_of_week", scheduleConfig: { "days": [1, 2, 3, 4, 5] }
+- "on the 1st and 15th" -> scheduleType: "days_of_month", scheduleConfig: { "days": [1, 15] }
+- "on the 2nd of every month" -> scheduleType: "days_of_month", scheduleConfig: { "days": [2] }
+Day-of-week numbers: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+If user doesn't specify a schedule, default to scheduleType: "period_days", scheduleConfig: { "period_days": 1 }
 
 DESCRIPTION GUIDELINES:
 - Keep descriptions concise and relevant

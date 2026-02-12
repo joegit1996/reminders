@@ -31,6 +31,8 @@ export interface Reminder {
   completion_webhook: string | null;
   completion_slack_channel_id: string | null;
   completion_slack_channel_name: string | null;
+  schedule_type: string;
+  schedule_config: Record<string, unknown>;
   is_complete: boolean;
   completed_at: string | null;
   days_remaining_at_completion: number | null;
@@ -134,8 +136,13 @@ export async function createReminder(
   delaySlackChannelId?: string | null,
   delaySlackChannelName?: string | null,
   completionSlackChannelId?: string | null,
-  completionSlackChannelName?: string | null
+  completionSlackChannelName?: string | null,
+  scheduleType?: string,
+  scheduleConfig?: Record<string, unknown>
 ): Promise<Reminder> {
+  const finalScheduleType = scheduleType || 'period_days';
+  const finalScheduleConfig = scheduleConfig || { period_days: periodDays };
+
   const { data, error } = await supabase
     .from('reminders')
     .insert({
@@ -144,6 +151,8 @@ export async function createReminder(
       description: description || null,
       due_date: dueDate,
       period_days: periodDays,
+      schedule_type: finalScheduleType,
+      schedule_config: finalScheduleConfig,
       slack_webhook: slackWebhook,
       slack_channel_id: slackChannelId || null,
       slack_channel_name: slackChannelName || null,
@@ -352,15 +361,49 @@ export async function getRemindersToSend(supabase: SupabaseClient): Promise<Remi
 
   // Filter reminders that need to be sent
   const remindersToSend = (data as Reminder[]).filter((reminder) => {
+    const scheduleType = reminder.schedule_type || 'period_days';
+    const config = reminder.schedule_config || {};
+
+    if (scheduleType === 'days_of_week') {
+      const days = (config as { days?: number[] }).days;
+      if (!days || !Array.isArray(days)) return false;
+      const todayDow = now.getUTCDay(); // 0=Sun..6=Sat
+      if (!days.includes(todayDow)) return false;
+      // Check last_sent is not today
+      if (reminder.last_sent) {
+        const lastSent = new Date(reminder.last_sent);
+        const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+        const lastSentUTC = Date.UTC(lastSent.getUTCFullYear(), lastSent.getUTCMonth(), lastSent.getUTCDate());
+        if (nowUTC === lastSentUTC) return false;
+      }
+      return true;
+    }
+
+    if (scheduleType === 'days_of_month') {
+      const days = (config as { days?: number[] }).days;
+      if (!days || !Array.isArray(days)) return false;
+      const todayDom = now.getUTCDate();
+      if (!days.includes(todayDom)) return false;
+      // Check last_sent is not today
+      if (reminder.last_sent) {
+        const lastSent = new Date(reminder.last_sent);
+        const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+        const lastSentUTC = Date.UTC(lastSent.getUTCFullYear(), lastSent.getUTCMonth(), lastSent.getUTCDate());
+        if (nowUTC === lastSentUTC) return false;
+      }
+      return true;
+    }
+
+    // Default: period_days
     if (!reminder.last_sent) return true; // Never sent
 
     const lastSent = new Date(reminder.last_sent);
-    
     const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     const lastSentUTC = Date.UTC(lastSent.getUTCFullYear(), lastSent.getUTCMonth(), lastSent.getUTCDate());
     const calendarDaysSinceLastSent = Math.floor((nowUTC - lastSentUTC) / (1000 * 60 * 60 * 24));
+    const periodDays = (config as { period_days?: number }).period_days || reminder.period_days;
 
-    return calendarDaysSinceLastSent >= reminder.period_days;
+    return calendarDaysSinceLastSent >= periodDays;
   });
 
   return remindersToSend;
