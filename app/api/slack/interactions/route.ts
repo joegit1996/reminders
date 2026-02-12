@@ -4,7 +4,6 @@ import { verifySlackRequest } from '@/lib/slack-interactive';
 import {
   getReminderById,
   markReminderComplete,
-  getSlackConnectionByTeamId,
   getSlackConnectionByUserId,
   updateReminderDueDate,
 } from '@/lib/db';
@@ -79,7 +78,7 @@ async function handleMarkComplete(
   const reminderId = parseInt(action.value);
 
   try {
-    console.log('[SLACK INTERACTIONS] Processing mark_complete for reminder:', reminderId, 'team:', team?.id);
+    console.log('[SLACK INTERACTIONS] Processing mark_complete for reminder:', reminderId);
 
     const reminder = await getReminderById(supabase, reminderId);
     if (!reminder) {
@@ -87,19 +86,11 @@ async function handleMarkComplete(
       await sendEphemeralError(response_url, 'Reminder not found.');
       return NextResponse.json({ ok: true });
     }
-    console.log('[SLACK INTERACTIONS] Found reminder:', reminderId, 'user_id:', reminder.user_id);
 
-    const connection = await getSlackConnectionByTeamId(supabase, team?.id);
+    const connection = await getSlackConnectionByUserId(supabase, reminder.user_id);
     if (!connection) {
-      console.error('[SLACK INTERACTIONS] No connection found for team:', team?.id);
-      await sendEphemeralError(response_url, 'This workspace is not connected to the app.');
-      return NextResponse.json({ ok: true });
-    }
-    console.log('[SLACK INTERACTIONS] Found connection for team:', team?.id, 'user_id:', connection.user_id);
-
-    if (reminder.user_id !== connection.user_id) {
-      console.error('[SLACK INTERACTIONS] Unauthorized: reminder user_id', reminder.user_id, 'does not match connection user_id', connection.user_id);
-      await sendEphemeralError(response_url, 'You can only complete your own reminders.');
+      console.error('[SLACK INTERACTIONS] No connection found for user:', reminder.user_id);
+      await sendEphemeralError(response_url, 'Slack connection not found.');
       return NextResponse.json({ ok: true });
     }
 
