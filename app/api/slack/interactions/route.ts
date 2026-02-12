@@ -5,6 +5,7 @@ import {
   getReminderById,
   markReminderComplete,
   getSlackConnectionByTeamId,
+  getSlackConnectionByUserId,
   updateReminderDueDate,
 } from '@/lib/db';
 import { sendDelayNotificationViaApi } from '@/lib/slack-interactive';
@@ -147,27 +148,19 @@ async function handleSetNewDueDate(
   const reminderId = parseInt(action.value);
 
   try {
-    // Parallelize DB calls to minimize time before views.open (trigger_id expires in 3s)
-    const [reminder, connection] = await Promise.all([
-      getReminderById(supabase, reminderId),
-      getSlackConnectionByTeamId(supabase, team?.id),
-    ]);
-
+    // Get reminder first, then look up connection by the reminder owner's user_id
+    // This is more reliable than team_id lookup which can have mismatches
+    const reminder = await getReminderById(supabase, reminderId);
     if (!reminder) {
       console.error('[SLACK INTERACTIONS] Reminder not found for set_new_due_date:', reminderId);
       await sendEphemeralError(response_url, 'Reminder not found.');
       return NextResponse.json({ ok: true });
     }
 
+    const connection = await getSlackConnectionByUserId(supabase, reminder.user_id);
     if (!connection) {
-      console.error('[SLACK INTERACTIONS] No connection found for team:', team?.id);
-      await sendEphemeralError(response_url, 'This workspace is not connected to the app.');
-      return NextResponse.json({ ok: true });
-    }
-
-    if (reminder.user_id !== connection.user_id) {
-      console.error('[SLACK INTERACTIONS] Unauthorized for set_new_due_date');
-      await sendEphemeralError(response_url, 'You can only modify your own reminders.');
+      console.error('[SLACK INTERACTIONS] No connection found for user:', reminder.user_id);
+      await sendEphemeralError(response_url, 'Slack connection not found.');
       return NextResponse.json({ ok: true });
     }
 
@@ -307,8 +300,8 @@ async function handleViewSubmission(
     // Update due date (this also clears nudge_sent_at and logs the change)
     const result = await updateReminderDueDate(supabase, reminderId, newDueDate);
 
-    // Get Slack connection
-    const connection = await getSlackConnectionByTeamId(supabase, payload.user.team_id);
+    // Get Slack connection via the reminder owner
+    const connection = await getSlackConnectionByUserId(supabase, reminder.user_id);
 
     // Send delay notification with reason if configured
     if (connection?.access_token && reminder.delay_message && reminder.delay_slack_channel_id) {
