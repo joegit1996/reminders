@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       completionWebhook,
       completionSlackChannelId,
       completionSlackChannelName,
+      nudgeEnabled,
     } = body;
 
     // Derive schedule type and config (backward compat: if only periodDays sent, convert)
@@ -211,7 +212,8 @@ export async function POST(request: NextRequest) {
         completionSlackChannelId || null,
         completionSlackChannelName || null,
         scheduleType,
-        scheduleConfig
+        scheduleConfig,
+        nudgeEnabled
       );
     } catch (dbError) {
       console.error('[REMINDERS API] Database error creating reminder:', dbError);

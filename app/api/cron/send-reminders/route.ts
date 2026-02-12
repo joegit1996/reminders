@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { 
-  getRemindersToSend, 
-  updateLastSent, 
+import {
+  getRemindersToSend,
+  updateLastSent,
   getAutomatedMessagesToSend,
   markAutomatedMessageSent,
   getAllSlackConnections,
   getSlackConnectionByUserId,
+  getRemindersToNudge,
+  markNudgeSent,
   Reminder,
 } from '@/lib/db';
 import { sendSlackReminder, sendAutomatedMessage } from '@/lib/slack';
-import { sendInteractiveReminder, sendSlackApiMessage } from '@/lib/slack-interactive';
+import { sendInteractiveReminder, sendSlackApiMessage, sendNudgeReply } from '@/lib/slack-interactive';
 import { format } from 'date-fns';
 
 export async function GET(request: NextRequest) {
@@ -112,6 +114,12 @@ export async function GET(request: NextRequest) {
 
           if (result.ok) {
             await updateLastSent(supabase, reminder.id);
+            // Store message timestamp for thread replies (nudges)
+            if (result.ts) {
+              await supabase.from('reminders').update({
+                last_sent_message_ts: result.ts,
+              }).eq('id', reminder.id);
+            }
             results.push({ id: reminder.id, type: 'reminder', status: 'sent', method: 'interactive' });
             console.log('[CRON] Sent interactive reminder:', reminder.id);
           } else {
@@ -207,18 +215,57 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Send nudge messages (2 days before due date)
+    const remindersToNudge = await getRemindersToNudge(supabase);
+    console.log('[CRON] Found', remindersToNudge.length, 'reminders to nudge');
+
+    for (const reminder of remindersToNudge) {
+      try {
+        const connection = connectionsByUserId.get(reminder.user_id);
+        if (!connection?.access_token || !reminder.last_sent_message_ts) continue;
+
+        const channelId = reminder.slack_channel_id || connection.default_channel_id;
+        if (!channelId) continue;
+
+        const nudgeResult = await sendNudgeReply({
+          accessToken: connection.access_token,
+          userAccessToken: connection.user_access_token,
+          channelId,
+          threadTs: reminder.last_sent_message_ts,
+          reminderId: reminder.id,
+          reminderText: reminder.text,
+        });
+
+        if (nudgeResult.ok) {
+          await markNudgeSent(supabase, reminder.id);
+          results.push({ id: reminder.id, type: 'nudge', status: 'sent', method: 'interactive' });
+          console.log('[CRON] Sent nudge for reminder:', reminder.id);
+        } else {
+          results.push({ id: reminder.id, type: 'nudge', status: 'failed', method: 'interactive' });
+          console.warn('[CRON] Failed to send nudge for reminder:', reminder.id, nudgeResult.error);
+        }
+      } catch (error) {
+        console.error(`[CRON] Error sending nudge for reminder ${reminder.id}:`, error);
+        results.push({ id: reminder.id, type: 'nudge', status: 'error' });
+      }
+    }
+
     // Summary statistics
     const interactiveSent = results.filter(r => r.method === 'interactive' && r.status === 'sent').length;
     const webhookSent = results.filter(r => r.method === 'webhook' && r.status === 'sent').length;
     const failed = results.filter(r => r.status === 'failed' || r.status === 'error').length;
 
+    const nudgesSent = results.filter(r => r.type === 'nudge' && r.status === 'sent').length;
+
     return NextResponse.json({
-      processed: reminders.length + automatedMessages.length,
+      processed: reminders.length + automatedMessages.length + remindersToNudge.length,
       reminders: reminders.length,
       automatedMessages: automatedMessages.length,
+      nudges: remindersToNudge.length,
       stats: {
         interactiveSent,
         webhookSent,
+        nudgesSent,
         failed,
       },
       results,

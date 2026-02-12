@@ -52,7 +52,7 @@ export async function PATCH(
 
     const id = parseInt(params.id);
     const body = await request.json();
-    const { action, dueDate, delayMessage, delayWebhooks, completionMessage, completionWebhook } = body;
+    const { action, dueDate, delayMessage, delayWebhooks, completionMessage, completionWebhook, nudgeEnabled } = body;
 
     if (action === 'complete') {
       const reminder = await markReminderComplete(supabase, id);
@@ -191,6 +191,28 @@ export async function PATCH(
           completion_webhook: completionWebhook || null,
           completion_slack_channel_id: completionSlackChannelId || null,
           completion_slack_channel_name: completionSlackChannelName || null,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json(updatedReminder);
+    }
+
+    if (action === 'update-nudge-config') {
+      const reminder = await getReminderById(supabase, id);
+      if (!reminder) {
+        return NextResponse.json(
+          { error: 'Reminder not found' },
+          { status: 404 }
+        );
+      }
+
+      const { data: updatedReminder, error } = await supabase
+        .from('reminders')
+        .update({
+          nudge_enabled: nudgeEnabled ?? true,
         })
         .eq('id', id)
         .select()

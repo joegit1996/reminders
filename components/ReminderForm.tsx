@@ -57,6 +57,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
     completionWebhook: '',
     completionSlackChannelId: null as string | null,
     completionSlackChannelName: null as string | null,
+    nudgeEnabled: true,
   });
   const [savedWebhooks, setSavedWebhooks] = useState<SavedWebhook[]>([]);
   const [showDelayConfig, setShowDelayConfig] = useState(false);
@@ -166,6 +167,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
           completionWebhook: formData.completionWebhook || null,
           completionSlackChannelId: formData.completionSlackChannelId,
           completionSlackChannelName: formData.completionSlackChannelName,
+          nudgeEnabled: formData.nudgeEnabled,
         }),
       });
 
@@ -195,6 +197,7 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
         completionWebhook: '',
         completionSlackChannelId: null,
         completionSlackChannelName: null,
+        nudgeEnabled: true,
       });
       setAutomatedMessageForm({
         days_before: '',
@@ -294,6 +297,19 @@ export default function ReminderForm({ onReminderCreated }: ReminderFormProps) {
             e.target.style.boxShadow = 'none';
           }}
         />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <input
+          type="checkbox"
+          id="nudgeEnabled"
+          checked={formData.nudgeEnabled}
+          onChange={(e) => setFormData({ ...formData, nudgeEnabled: e.target.checked })}
+          style={{ width: '1.25rem', height: '1.25rem', accentColor: '#000000' }}
+        />
+        <label htmlFor="nudgeEnabled" style={{ fontWeight: '600', color: '#000000', fontSize: '0.875rem' }}>
+          Send a nudge 2 days before the due date
+        </label>
       </div>
 
       <div>

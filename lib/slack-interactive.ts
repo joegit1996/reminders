@@ -97,6 +97,16 @@ export async function sendInteractiveReminder(options: InteractiveReminderOption
           type: 'button',
           text: {
             type: 'plain_text',
+            text: '📅 Set New Due Date',
+            emoji: true,
+          },
+          action_id: 'set_new_due_date',
+          value: String(reminderId),
+        },
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
             text: '🔗 Use App',
             emoji: true,
           },
@@ -462,6 +472,80 @@ export async function sendCompletionNotificationViaApi(
     return result;
   } catch (error) {
     console.error('[SLACK COMPLETION NOTIFICATION] Error sending message:', error);
+    return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Send a nudge reply as a thread under the original reminder message
+export async function sendNudgeReply(options: {
+  accessToken: string;
+  userAccessToken?: string | null;
+  channelId: string;
+  threadTs: string;
+  reminderId: number;
+  reminderText: string;
+}): Promise<{ ok: boolean; ts?: string; error?: string }> {
+  const { accessToken, userAccessToken, channelId, threadTs, reminderId, reminderText } = options;
+  const sendToken = userAccessToken || accessToken;
+
+  const blocks: SlackBlock[] = [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `⏰ *Nudge:* This reminder is closing in on its due date. Would you like to set a new due date?\n\n_Ignore if still on track._`,
+      },
+    },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '✅ Complete Task',
+            emoji: true,
+          },
+          action_id: 'mark_complete',
+          value: String(reminderId),
+          style: 'primary',
+        },
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '📅 Set New Due Date',
+            emoji: true,
+          },
+          action_id: 'set_new_due_date',
+          value: String(reminderId),
+        },
+      ],
+    },
+  ];
+
+  try {
+    const response = await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sendToken}`,
+      },
+      body: JSON.stringify({
+        channel: channelId,
+        thread_ts: threadTs,
+        blocks,
+        text: `Nudge: ${reminderText} is closing in on its due date.`,
+      }),
+    });
+
+    const result = await response.json();
+    if (!result.ok) {
+      console.error('[SLACK NUDGE] Error sending nudge:', result.error);
+    }
+    return result;
+  } catch (error) {
+    console.error('[SLACK NUDGE] Error sending nudge:', error);
     return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }

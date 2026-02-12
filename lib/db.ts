@@ -31,6 +31,9 @@ export interface Reminder {
   completion_webhook: string | null;
   completion_slack_channel_id: string | null;
   completion_slack_channel_name: string | null;
+  last_sent_message_ts: string | null;
+  nudge_enabled: boolean;
+  nudge_sent_at: string | null;
   schedule_type: string;
   schedule_config: Record<string, unknown>;
   is_complete: boolean;
@@ -138,7 +141,8 @@ export async function createReminder(
   completionSlackChannelId?: string | null,
   completionSlackChannelName?: string | null,
   scheduleType?: string,
-  scheduleConfig?: Record<string, unknown>
+  scheduleConfig?: Record<string, unknown>,
+  nudgeEnabled?: boolean
 ): Promise<Reminder> {
   const finalScheduleType = scheduleType || 'period_days';
   const finalScheduleConfig = scheduleConfig || { period_days: periodDays };
@@ -165,6 +169,7 @@ export async function createReminder(
       completion_webhook: completionWebhook || null,
       completion_slack_channel_id: completionSlackChannelId || null,
       completion_slack_channel_name: completionSlackChannelName || null,
+      nudge_enabled: nudgeEnabled ?? true,
       is_complete: false,
     })
     .select()
@@ -191,7 +196,7 @@ export async function updateReminderDueDate(
   // Update reminder
   const { data: updatedReminder, error: updateError } = await supabase
     .from('reminders')
-    .update({ due_date: newDueDate })
+    .update({ due_date: newDueDate, nudge_sent_at: null })
     .eq('id', id)
     .select()
     .single();
@@ -442,6 +447,37 @@ export async function getAutomatedMessagesToSend(supabase: SupabaseClient): Prom
   }
 
   return messagesToSend;
+}
+
+// Get reminders that need a nudge (2 days before due date)
+export async function getRemindersToNudge(supabase: SupabaseClient): Promise<Reminder[]> {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const twoDaysFromNow = new Date(today);
+  twoDaysFromNow.setUTCDate(twoDaysFromNow.getUTCDate() + 2);
+  const targetDate = twoDaysFromNow.toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('reminders')
+    .select('*')
+    .eq('is_complete', false)
+    .eq('nudge_enabled', true)
+    .is('nudge_sent_at', null)
+    .not('last_sent_message_ts', 'is', null)
+    .eq('due_date', targetDate);
+
+  if (error) throw error;
+  return data as Reminder[];
+}
+
+// Mark nudge as sent for a reminder
+export async function markNudgeSent(supabase: SupabaseClient, reminderId: number): Promise<void> {
+  const { error } = await supabase
+    .from('reminders')
+    .update({ nudge_sent_at: new Date().toISOString() })
+    .eq('id', reminderId);
+
+  if (error) throw error;
 }
 
 // Mark automated message as sent
